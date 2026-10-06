@@ -1,0 +1,28 @@
+# ==============================================================================
+# PROYECTO FINAL MACHINE LEARNING — SINIESTROS VIALES MEDELLÍN
+# Dependencias principales del proyecto para trabajo en equipo
+# ==============================================================================
+
+# Manipulación y cálculo numérico
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualización de datos y reportes
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Machine Learning y preprocesamiento
+scikit-learn>=1.3.0
+imbalanced-learn>=0.11.0
+
+# Algoritmos de Gradient Boosting
+xgboost>=2.0.0
+lightgbm>=4.0.0
+
+# Descarga de datos y utilidades
+requests>=2.31.0
+tqdm>=4.66.0
+
+# Entorno de experimentación
+jupyter>=1.0.0
+ipykernel>=6.25.0
