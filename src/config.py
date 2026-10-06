@@ -21,6 +21,7 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 MODELS_DIR = BASE_DIR / "models"
 DOCS_DIR = BASE_DIR / "docs"
 NOTEBOOKS_DIR = BASE_DIR / "notebooks"
+REPORTS_DIR = BASE_DIR / "reports"
 
 # Archivos específicos de datos
 RAW_CSV_PATH = RAW_DATA_DIR / "incidentes_viales.csv"
@@ -39,16 +40,37 @@ MEDATA_CSV_URL = (
 # ==============================================================================
 RANDOM_STATE = 42
 TEST_SIZE = 0.20
-VALIDATION_SIZE = 0.20  # Si se requiere split Train/Val/Test
+VALIDATION_SIZE = 0.20
 CV_FOLDS = 5
 
 # ==============================================================================
-# ESQUEMA DE COLUMNAS DEL PROBLEMA DE NEGOCIO
+# ESQUEMA DE COLUMNAS ESTANDARIZADAS (ASCII-Friendly)
 # ==============================================================================
+STANDARD_COLUMNS = [
+    "ANIO",
+    "CBML",
+    "CLASE_ACCIDENTE",
+    "DIRECCION",
+    "DIRECCION_ENCASILLADA",
+    "DISENO",
+    "EXPEDIENTE",
+    "FECHA_ACCIDENTE",
+    "FECHA_ACCIDENTES",
+    "GRAVEDAD_ACCIDENTE",
+    "MES",
+    "NRO_RADICADO",
+    "NUMCOMUNA",
+    "BARRIO",
+    "COMUNA",
+    "LOCATION",
+    "X",
+    "Y",
+]
+
 # Variable objetivo original en MEData: 'Con heridos', 'Solo daños', 'Con muertos'
 TARGET_COLUMN = "GRAVEDAD_ACCIDENTE"
 
-# Variable objetivo binaria para clasificación:
+# Variable objetivo binaria para clasificación supervisada:
 # 1 = Severo / Crítico ('Con heridos' o 'Con muertos')
 # 0 = No severo / Solo daños materiales ('Solo daños')
 BINARY_TARGET_COLUMN = "es_grave"
@@ -61,11 +83,11 @@ LEAKAGE_COLS = [
     "FECHA_ACCIDENTES",  # Duplicado en formato ISO de FECHA_ACCIDENTE
 ]
 
-# Columnas informativas para geocodificación / visualización
+# Columnas espaciales y geográficas
 SPATIAL_COLS = ["COMUNA", "BARRIO", "NUMCOMUNA", "LOCATION", "X", "Y"]
 
 # Columnas temporales
-TEMPORAL_COLS = ["FECHA_ACCIDENTE", "MES", "AÑO"]
+TEMPORAL_COLS = ["FECHA_ACCIDENTE", "MES", "ANIO"]
 
-# Columnas del incidente y características de la vía
-ROAD_COLS = ["CLASE_ACCIDENTE", "DISEÑO", "DIRECCION", "DIRECCION ENCASILLADA"]
+# Columnas del incidente y geometría de la vía
+ROAD_COLS = ["CLASE_ACCIDENTE", "DISENO", "DIRECCION", "DIRECCION_ENCASILLADA"]
