@@ -1,0 +1,885 @@
+# PROYECTO FINAL — MACHINE LEARNING
+
+Quiero que trabajes como un **Machine Learning Engineer / Data Scientist senior**, pero también como un profesor que debe revisar que una entrega académica cumpla exactamente con la rúbrica del proyecto.
+
+## CONTEXTO
+
+Este repositorio corresponde a mi proyecto final de Machine Learning:
+
+GitHub:
+https://github.com/sebastia-olaya/Proyecto-final-Machine-Learning.git
+
+El proyecto debe cumplir las instrucciones del PDF "Proyecto final — Machine Learning" que está disponible en el contexto de trabajo.
+
+IMPORTANTE:
+
+Tengo una carpeta de trabajo donde voy a abrir este IDE y, además del repositorio del proyecto, existen otras carpetas con:
+
+* ejemplos de limpieza de datos;
+* ejemplos de análisis exploratorio de datos;
+* notebooks;
+* posiblemente datasets y ejercicios realizados durante el curso;
+* ejemplos de transformaciones;
+* ejemplos de entrenamiento/evaluación de modelos.
+
+Estos ejemplos NO son necesariamente el proyecto final.
+
+Debes utilizarlos como **referencia de metodología, estilo, técnicas y nivel de profundidad**, pero NO debes copiar ciegamente el código ni asumir que sus datasets o problemas son adecuados para el proyecto final.
+
+---
+
+# OBJETIVO PRINCIPAL
+
+Construir una entrega final de Machine Learning sólida, reproducible y presentable, cumpliendo TODOS los requisitos del PDF.
+
+El proyecto debe recorrer explícitamente:
+
+1. ¿ML?
+2. Datos
+3. Limpieza
+4. Columnas
+5. Modelos
+6. Evaluación
+
+La exposición debe poder ejecutarse desde el código/notebook y demostrar el proceso completo.
+
+NO quiero solamente un modelo con una métrica.
+
+Quiero que el repositorio cuente una historia clara:
+
+PROBLEMA REAL
+→ DATOS REALES
+→ EXPLORACIÓN
+→ LIMPIEZA
+→ TRANSFORMACIONES
+→ FEATURE ENGINEERING
+→ PREVENCIÓN DE DATA LEAKAGE
+→ BASELINE
+→ VARIOS MODELOS
+→ VALIDACIÓN
+→ MÉTRICAS
+→ COMPARACIÓN
+→ ELECCIÓN DEL MODELO
+→ CONCLUSIONES
+
+---
+
+# FASE 0 — NO MODIFIQUES NADA TODAVÍA
+
+Antes de crear archivos o escribir código, realiza una auditoría completa.
+
+## 0.1 Audita el repositorio
+
+Analiza:
+
+* estructura actual;
+* archivos existentes;
+* README;
+* LICENSE;
+* branches si son visibles;
+* notebooks;
+* scripts;
+* datasets;
+* configuración;
+* requirements;
+* cualquier código existente.
+
+Determina qué existe realmente y qué debemos crear desde cero.
+
+## 0.2 Audita TODA la carpeta de trabajo
+
+Busca las carpetas que contienen ejemplos del curso.
+
+No asumas sus nombres.
+
+Identifica:
+
+* notebooks;
+* CSV;
+* Excel;
+* JSON;
+* datasets;
+* scripts Python;
+* README;
+* archivos relacionados con limpieza;
+* archivos relacionados con EDA;
+* ejemplos de pipelines;
+* ejemplos de modelos.
+
+Clasifica los ejemplos encontrados.
+
+Por ejemplo:
+
+examples/
+├── data_cleaning/
+├── exploratory_analysis/
+├── feature_engineering/
+├── classification/
+├── regression/
+├── evaluation/
+└── other/
+
+NO muevas ni modifiques los ejemplos originales.
+
+## 0.3 Aprende de los ejemplos
+
+Para cada ejemplo relevante identifica:
+
+* qué problema resuelve;
+* qué librerías utiliza;
+* cómo carga los datos;
+* cómo inspecciona los datos;
+* cómo trata valores faltantes;
+* cómo trata duplicados;
+* cómo trata outliers;
+* cómo convierte tipos;
+* cómo transforma variables;
+* cómo trata variables categóricas;
+* cómo escala variables;
+* cómo hace train/test split;
+* cómo construye pipelines;
+* cómo entrena modelos;
+* cómo evalúa;
+* qué estilo de visualización utiliza.
+
+Quiero que determines cuáles prácticas son reutilizables para el proyecto final.
+
+IMPORTANTE:
+No copies código simplemente porque existe en los ejemplos.
+Primero explica por qué una técnica es apropiada para nuestro problema.
+
+---
+
+# FASE 1 — INTERPRETACIÓN DEL PDF
+
+Antes de desarrollar, convierte las instrucciones del PDF en una checklist técnica.
+
+Debes validar explícitamente:
+
+## PASO 1 — ¿ML?
+
+Debe existir:
+
+* problema real;
+* objetivo;
+* variable objetivo;
+* explicación de por qué Machine Learning tiene sentido;
+* regla manual / baseline humano;
+* comparación posterior contra esa regla.
+
+## PASO 2 — DATOS
+
+Debemos documentar:
+
+* fuente;
+* URL;
+* quién publica los datos;
+* licencia si está disponible;
+* método de descarga;
+* si provienen de archivo, API o varias fuentes;
+* qué representa cada fila;
+* número de filas;
+* número de columnas;
+* variable objetivo;
+* justificación de por qué vale la pena predecirla.
+
+La guía también indica que utilizar varias fuentes/tablas y tener que construir una tabla principal aumenta la complejidad del proyecto.
+
+## PASO 3 — LIMPIEZA
+
+Debemos demostrar:
+
+* valores faltantes;
+* duplicados;
+* tipos de datos;
+* formatos;
+* valores inconsistentes;
+* posibles outliers;
+* posibles fugas de información;
+* decisiones de limpieza;
+* justificación de cada transformación.
+
+Cuando tenga sentido, compara diferentes estrategias para valores faltantes y muestra su efecto.
+
+## PASO 4 — COLUMNAS
+
+Debemos explicar:
+
+* qué columnas entran;
+* cuáles se eliminan;
+* cuáles se crean;
+* por qué;
+* qué transformaciones se aplican;
+* cómo se manejan fechas;
+* texto;
+* categorías;
+* escalas;
+* transformaciones logarítmicas si son apropiadas.
+
+MUY IMPORTANTE:
+
+Las transformaciones que puedan aprender información del dataset deben estar dentro de un Pipeline/ColumnTransformer apropiado para evitar data leakage.
+
+## PASO 5 — MODELOS
+
+Debemos comparar:
+
+* baseline;
+* regla manual;
+* varios modelos;
+* familias de modelos diferentes cuando tenga sentido.
+
+Todos los modelos deben utilizar:
+
+* los mismos datos;
+* la misma estrategia de validación;
+* el mismo criterio de evaluación;
+* preprocessing correctamente integrado.
+
+## PASO 6 — EVALUACIÓN
+
+Debemos:
+
+* seleccionar métricas apropiadas;
+* comparar todos los modelos;
+* comparar contra baseline/regla manual;
+* justificar la elección final;
+* explicar por qué el modelo elegido es adecuado.
+
+NO elegir automáticamente el modelo con el número más alto.
+
+---
+
+# FASE 2 — SELECCIÓN DEL PROBLEMA
+
+Después de analizar los ejemplos, los datasets disponibles y el repo, propón entre 3 y 5 posibles problemas reales.
+
+Para cada propuesta muestra:
+
+1. Problema.
+2. Fuente de datos.
+3. Variable objetivo.
+4. Tipo de ML:
+
+   * clasificación;
+   * regresión;
+   * u otro, si realmente tiene sentido.
+5. Regla manual posible.
+6. Complejidad de los datos.
+7. Cantidad aproximada de registros.
+8. Cantidad de variables.
+9. Posibles problemas de limpieza.
+10. Posibles features interesantes.
+11. Riesgo de data leakage.
+12. Modelos posibles.
+13. Métricas apropiadas.
+14. Dificultad de explicar el proyecto presencialmente.
+15. Ventajas.
+16. Desventajas.
+17. Qué tan bien cumple la rúbrica.
+
+Después recomienda UNA opción.
+
+La recomendación debe priorizar:
+
+* calidad académica;
+* complejidad suficiente;
+* datos reales;
+* limpieza interesante;
+* posibilidad de feature engineering;
+* posibilidad de comparar varios modelos;
+* facilidad para explicar;
+* reproducibilidad;
+* ejecución rápida en vivo;
+* ausencia de problemas legales/licencias;
+* posibilidad de obtener resultados convincentes sin hacer un proyecto artificialmente complejo.
+
+NO elijas un problema solamente porque tenga una métrica alta.
+
+---
+
+# FASE 3 — VALIDACIÓN DE LOS DATOS
+
+Una vez seleccionada la opción:
+
+Antes de desarrollar el modelo, comprueba que los datos realmente existen y son accesibles.
+
+Documenta:
+
+* fuente;
+* URL;
+* licencia;
+* fecha de consulta;
+* método de descarga;
+* tamaño;
+* estructura;
+* columnas;
+* variable objetivo.
+
+Si necesitamos descargar datos desde Internet, crea un proceso reproducible para hacerlo.
+
+NO dependas de que exista manualmente un CSV dentro del repositorio si podemos generar/descargar los datos mediante un script.
+
+Si por razones de reproducibilidad conviene incluir un dataset, determina qué parte puede almacenarse en Git y qué parte debería descargarse mediante script.
+
+---
+
+# FASE 4 — DISEÑO DE LA ESTRUCTURA DEL REPOSITORIO
+
+Propón primero una estructura limpia.
+
+Por ejemplo, puedes considerar algo similar a:
+
+Proyecto-final-Machine-Learning/
+│
+├── README.md
+├── requirements.txt
+├── .gitignore
+│
+├── data/
+│   ├── raw/
+│   ├── processed/
+│   └── README.md
+│
+├── notebooks/
+│   ├── 01_problema_y_datos.ipynb
+│   ├── 02_eda_y_limpieza.ipynb
+│   ├── 03_feature_engineering.ipynb
+│   ├── 04_modelado.ipynb
+│   └── 05_evaluacion.ipynb
+│
+├── src/
+│   ├── data/
+│   ├── features/
+│   ├── models/
+│   └── evaluation/
+│
+├── scripts/
+│   └── download_data.py
+│
+├── reports/
+│   └── figures/
+│
+└── presentation/
+└── README.md
+
+PERO no copies esta estructura automáticamente.
+
+Adáptala al problema seleccionado y a los ejemplos encontrados.
+
+El criterio principal es que el proyecto sea:
+
+* fácil de entender;
+* fácil de ejecutar;
+* reproducible;
+* fácil de presentar;
+* profesional.
+
+---
+
+# FASE 5 — EXPLORACIÓN Y LIMPIEZA
+
+Implementa un análisis exploratorio completo.
+
+Como mínimo:
+
+* dimensiones;
+* tipos;
+* estadísticas descriptivas;
+* distribución de la variable objetivo;
+* valores faltantes;
+* duplicados;
+* cardinalidad;
+* variables categóricas;
+* variables numéricas;
+* correlaciones cuando sean apropiadas;
+* relaciones importantes con la variable objetivo;
+* detección de anomalías/outliers cuando sea relevante.
+
+Genera visualizaciones que realmente aporten información.
+
+NO generar gráficos solamente para llenar el notebook.
+
+Cada gráfico debe responder una pregunta.
+
+---
+
+# FASE 6 — LIMPIEZA DOCUMENTADA
+
+Para cada transformación responde:
+
+1. ¿Qué problema encontramos?
+2. ¿Cómo lo detectamos?
+3. ¿Qué alternativas existían?
+4. ¿Qué opción elegimos?
+5. ¿Por qué?
+6. ¿Qué efecto tuvo?
+
+Mostrar explícitamente:
+
+ANTES → TRANSFORMACIÓN → DESPUÉS
+
+Incluye una tabla de resumen como:
+
+| Problema | Evidencia | Solución | Justificación |
+| -------- | --------- | -------- | ------------- |
+
+No eliminar datos arbitrariamente.
+
+No eliminar columnas solamente porque tienen valores faltantes.
+
+No eliminar outliers sin justificarlo.
+
+---
+
+# FASE 7 — DATA LEAKAGE
+
+Haz una auditoría específica de leakage.
+
+Para cada feature pregunta:
+
+"¿Esta información estaría disponible en el momento real en que quiero realizar la predicción?"
+
+Si la respuesta es NO:
+
+* eliminarla;
+* transformarla;
+* o explicar por qué no puede utilizarse.
+
+Todo preprocessing que dependa de los datos debe ajustarse solamente con los datos de entrenamiento.
+
+Utiliza Pipeline / ColumnTransformer cuando sea apropiado.
+
+NO permitas:
+
+* imputación utilizando todo el dataset antes del split;
+* scaling usando todo el dataset;
+* encoding aprendido usando test;
+* selección de variables usando test;
+* features calculadas usando información posterior al objetivo.
+
+---
+
+# FASE 8 — FEATURE ENGINEERING
+
+Analiza si podemos crear variables nuevas.
+
+Para cada feature creada:
+
+* nombre;
+* fórmula;
+* origen;
+* justificación;
+* interpretación;
+* riesgo de leakage.
+
+No crear features artificiales solamente para aumentar la métrica.
+
+Las features deben tener sentido para el problema real.
+
+---
+
+# FASE 9 — BASELINE Y REGLA MANUAL
+
+Crear:
+
+1. baseline simple;
+2. regla manual razonable.
+
+Ejemplos:
+
+* clase mayoritaria;
+* promedio;
+* mediana;
+* regla basada en una variable;
+* umbral sencillo.
+
+La regla debe representar razonablemente lo que una persona podría hacer sin ML.
+
+Después comparar:
+
+Regla manual
+vs
+Baseline
+vs
+Modelos ML
+
+---
+
+# FASE 10 — MODELOS
+
+Selecciona varios modelos apropiados para el problema.
+
+Idealmente incluir modelos de familias diferentes.
+
+Ejemplo para clasificación:
+
+* Logistic Regression;
+* Decision Tree;
+* Random Forest;
+* Gradient Boosting / XGBoost si es apropiado;
+* KNN o SVM si tienen sentido.
+
+Ejemplo para regresión:
+
+* Linear Regression;
+* Ridge;
+* Decision Tree Regressor;
+* Random Forest Regressor;
+* Gradient Boosting / XGBoost.
+
+NO incluir modelos solamente para aumentar la cantidad.
+
+Cada modelo debe tener una razón.
+
+---
+
+# FASE 11 — MISMA VARA PARA TODOS
+
+Todos los modelos deben compararse bajo condiciones equivalentes.
+
+Utilizar:
+
+* mismo dataset;
+* mismo target;
+* mismo preprocessing;
+* misma validación cruzada;
+* misma métrica principal;
+* misma semilla cuando corresponda.
+
+Preferir:
+
+Pipeline
++
+ColumnTransformer
++
+cross-validation
+
+cuando sea apropiado.
+
+Evitar que el preprocessing ocurra antes de la validación cruzada si puede producir leakage.
+
+---
+
+# FASE 12 — EVALUACIÓN
+
+Selecciona la métrica de acuerdo con el problema.
+
+Clasificación:
+
+* Accuracy;
+* Precision;
+* Recall;
+* F1;
+* ROC-AUC;
+* PR-AUC si es necesario.
+
+Regresión:
+
+* MAE;
+* RMSE;
+* R²;
+* RMSLE si tiene sentido.
+
+NO presentar métricas sin explicar qué significan para el problema.
+
+Crear una tabla final:
+
+| Modelo | Métrica principal | Otras métricas | CV mean | CV std | Observaciones |
+| ------ | ----------------- | -------------- | ------- | ------ | ------------- |
+
+También comparar contra:
+
+* baseline;
+* regla manual.
+
+---
+
+# FASE 13 — ELECCIÓN DEL MODELO
+
+La elección final debe estar argumentada.
+
+Considerar:
+
+* métrica;
+* estabilidad;
+* complejidad;
+* interpretabilidad;
+* tiempo de entrenamiento;
+* facilidad de explicación;
+* riesgo de overfitting;
+* utilidad práctica.
+
+La frase:
+
+"Elegimos X porque obtuvo la métrica más alta"
+
+NO es suficiente.
+
+---
+
+# FASE 14 — NOTEBOOK PRINCIPAL PARA LA EXPOSICIÓN
+
+Crear un notebook principal que pueda ejecutarse de principio a fin.
+
+Debe seguir exactamente el orden de exposición:
+
+# 1. Problema y regla manual
+
+# 2. Datos
+
+# 3. Limpieza
+
+# 4. Columnas / Feature Engineering
+
+# 5. Modelos
+
+# 6. Evaluación
+
+El notebook debe poder ejecutarse:
+
+Restart Kernel
+→ Run All
+→ resultados correctos
+
+sin depender de variables creadas manualmente en celdas anteriores o archivos temporales ocultos.
+
+---
+
+# FASE 15 — EJECUCIÓN EN VIVO
+
+El profesor ejecutará el código frente al grupo.
+
+Por lo tanto:
+
+* fijar semillas;
+* evitar operaciones innecesariamente lentas;
+* evitar dependencias frágiles;
+* verificar rutas relativas;
+* evitar rutas absolutas de mi computador;
+* asegurar que los datos puedan obtenerse;
+* asegurar que el proyecto funcione desde un entorno limpio.
+
+Antes de finalizar, simula una ejecución desde cero.
+
+---
+
+# FASE 16 — README
+
+Crear un README profesional que explique:
+
+## Proyecto
+
+Descripción breve.
+
+## Problema
+
+Qué queremos resolver.
+
+## Dataset
+
+Fuente y descripción.
+
+## Objetivo
+
+Variable objetivo.
+
+## Metodología
+
+Los seis pasos:
+
+1. ¿ML?
+2. Datos
+3. Limpieza
+4. Columnas
+5. Modelos
+6. Evaluación
+
+## Instalación
+
+Cómo crear el entorno.
+
+## Ejecución
+
+Comandos exactos.
+
+## Resultados
+
+Resumen de los modelos.
+
+## Modelo elegido
+
+Justificación.
+
+## Estructura
+
+Explicación de las carpetas.
+
+## Reproducibilidad
+
+Cómo ejecutar desde cero.
+
+---
+
+# FASE 17 — AUDITORÍA FINAL CONTRA LA RÚBRICA
+
+Antes de terminar, crea una checklist:
+
+### Complejidad del problema — 25 %
+
+[ ] Problema real
+[ ] Fuente real
+[ ] Datos suficientemente complejos
+[ ] Proceso no trivial
+
+### Datos y transformación — 25 %
+
+[ ] Fuente documentada
+[ ] Descarga documentada
+[ ] Filas explicadas
+[ ] Columnas explicadas
+[ ] Variable objetivo
+[ ] Faltantes
+[ ] Duplicados
+[ ] Tipos
+[ ] Transformaciones
+[ ] Feature engineering
+[ ] Data leakage revisado
+
+### Modelos — 20 %
+
+[ ] Baseline
+[ ] Regla manual
+[ ] Múltiples modelos
+[ ] Familias diferentes
+[ ] Misma validación
+[ ] Pipeline
+
+### Código en vivo — 15 %
+
+[ ] Corre desde cero
+[ ] Run All funciona
+[ ] Semilla fija
+[ ] Sin rutas absolutas
+[ ] Sin errores
+[ ] Tiempo razonable
+
+### Métricas y elección — 15 %
+
+[ ] Métrica adecuada
+[ ] Tabla comparativa
+[ ] Baseline incluido
+[ ] Regla manual incluida
+[ ] Elección argumentada
+
+---
+
+# REGLAS IMPORTANTES
+
+## Regla 1 — No inventar resultados
+
+Nunca escribas:
+
+"El modelo obtuvo 92 %"
+
+si no lo ejecutaste realmente.
+
+Los resultados deben provenir de una ejecución real.
+
+## Regla 2 — No inventar datos
+
+No crear datasets ficticios para hacer parecer que el proyecto funciona.
+
+## Regla 3 — No copiar los ejemplos
+
+Los ejemplos son material de referencia.
+
+Reutiliza ideas y técnicas cuando sean apropiadas, pero adapta todo al problema final.
+
+## Regla 4 — No sobreingeniería
+
+Este es un proyecto académico.
+
+No quiero una arquitectura empresarial innecesariamente compleja.
+
+Quiero máxima claridad y calidad metodológica.
+
+## Regla 5 — Priorizar explicabilidad
+
+Debo poder explicar presencialmente:
+
+* de dónde vienen los datos;
+* qué limpié;
+* por qué lo limpié;
+* qué columnas utilicé;
+* qué modelos probé;
+* qué métrica utilicé;
+* por qué elegí el modelo final.
+
+## Regla 6 — No ocultar decisiones
+
+Si existe una decisión importante, documentarla.
+
+Por ejemplo:
+
+"Se utilizó mediana en lugar de media porque..."
+
+o:
+
+"Se eliminó esta variable porque..."
+
+## Regla 7 — No hacer cambios destructivos
+
+Antes de modificar archivos existentes:
+
+* analizarlos;
+* conservar información útil;
+* evitar borrar ejemplos originales.
+
+## Regla 8 — Si falta información, detente
+
+Si no puedes determinar algo importante:
+
+NO inventes.
+
+Indica:
+
+* qué falta;
+* por qué importa;
+* qué alternativas existen.
+
+---
+
+# FORMA DE TRABAJO
+
+Quiero que trabajes por fases.
+
+NO intentes generar todo el proyecto en una sola operación.
+
+Primero realiza:
+
+FASE 0
+→ Auditoría del repo
+→ Auditoría de ejemplos
+→ Interpretación del PDF
+
+Después entrega:
+
+1. Qué encontraste.
+2. Qué ejemplos son relevantes.
+3. Qué técnicas podemos reutilizar.
+4. Qué estructura recomiendas.
+5. 3–5 problemas posibles.
+6. Tu problema recomendado.
+7. Justificación detallada.
+8. Riesgos y decisiones importantes.
+
+SOLO después de esa revisión empieza a crear/modificar código.
+
+Cuando desarrolles el proyecto, después de cada fase verifica que lo implementado funciona antes de continuar.
+
+Al finalizar, ejecuta una auditoría completa del repositorio y verifica que cumple la rúbrica del PDF.
+
+El objetivo NO es simplemente "hacer un modelo".
+
+El objetivo es construir una entrega académica que demuestre correctamente TODO EL PROCESO DE MACHINE LEARNING y que pueda ser defendida y ejecutada en vivo frente al profesor.
