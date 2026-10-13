@@ -1,5 +1,5 @@
 """
-pipeline.py — Definición canónica del Pipeline de Preprocesamiento y Modelado.
+pipeline.py — Definición canónica del Pipeline de Preprocesamiento y Modelado para Vuelos EE.UU.
 
 Encapsula todo el preprocesamiento dentro de Scikit-Learn ColumnTransformer
 para garantizar hermetismo absoluto y CERO Data Leakage entre entrenamiento y prueba.
@@ -8,7 +8,6 @@ para garantizar hermetismo absoluto y CERO Data Leakage entre entrenamiento y pr
 import sys
 from pathlib import Path
 
-# Garantizar raíz en sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
@@ -26,40 +25,43 @@ from src.utils.logger import get_logger
 logger = get_logger("pipeline")
 
 # ==============================================================================
-# CARACTERÍSTICAS PREDICTORAS CANÓNICAS
+# CARACTERÍSTICAS PREDICTORAS PRE-VUELO
 # ==============================================================================
 DEFAULT_NUMERICAL_FEATURES = [
-    "hora_sin",
-    "hora_cos",
-    "dia_semana",
-    "es_fin_de_semana",
-    "mes_sin",
-    "mes_cos",
-    "X",
-    "Y",
+    "CRS_DEP_HOUR",
+    "CRS_ARR_HOUR",
+    "CRS_ELAPSED_TIME",
+    "DISTANCE",
+    "DAY_OF_WEEK",
+    "MONTH",
+    "IS_WEEKEND",
+    "ORIGIN_IS_HUB",
+    "DEST_IS_HUB",
+    "IS_HUB_TO_HUB",
 ]
 
 DEFAULT_CATEGORICAL_FEATURES = [
-    "clase_accidente_limpia",
-    "diseno_limpio",
-    "comuna_limpia",
-    "tipo_via",
-    "franja_horaria",
+    "OP_UNIQUE_CARRIER",
+    "ORIGIN",
+    "DEST",
+    "DEP_TIME_BLOCK",
+    "DISTANCE_CAT",
+    "SEASON",
 ]
 
 
 def build_preprocessor(
     numerical_cols: Optional[List[str]] = None,
     categorical_cols: Optional[List[str]] = None,
-    min_category_freq: float = 0.01,
+    top_categories: int = 25,
 ) -> ColumnTransformer:
     """
-    Construye el ColumnTransformer hermético para preprocesamiento.
+    Construye el ColumnTransformer hermético para preprocesamiento de vuelos.
 
     Sub-pipelines:
     - Numérico: Imputación por mediana -> Estandarización (StandardScaler).
     - Categórico: Imputación por constante ('DESCONOCIDO') ->
-                 Agrupación de categorías raras (< 1%) ->
+                 Agrupación de aeropuertos top (RareCategoryGrouper) ->
                  OneHotEncoder (handle_unknown='ignore').
     """
     if numerical_cols is None:
@@ -77,7 +79,7 @@ def build_preprocessor(
     cat_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="constant", fill_value="DESCONOCIDO")),
-            ("grouper", RareCategoryGrouper(min_freq=min_category_freq, fill_value="OTRO")),
+            ("grouper", RareCategoryGrouper(top_n=top_categories, fill_value="OTRO")),
             ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
         ]
     )
@@ -98,46 +100,22 @@ def build_preprocessor(
 
 
 def build_full_pipeline(
-    classifier: BaseEstimator,
-    preprocessor: Optional[ColumnTransformer] = None,
-) -> Pipeline:
-    """
-    Ensambla el preprocesador hermético con cualquier clasificador de Scikit-Learn.
-    """
-    if preprocessor is None:
-        preprocessor = build_preprocessor()
-
-    full_pipeline = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            ("classifier", classifier),
-        ]
-    )
-    return full_pipeline
-
-
-def get_feature_names(
-    preprocessor: ColumnTransformer,
+    model: BaseEstimator,
     numerical_cols: Optional[List[str]] = None,
     categorical_cols: Optional[List[str]] = None,
-) -> List[str]:
+) -> Pipeline:
     """
-    Extrae los nombres finales de las columnas post-transformación
-    para facilitar la interpretabilidad de coeficientes y feature importance.
+    Ensambla el preprocesador hermético con un estimador Scikit-Learn en un solo Pipeline.
     """
-    if numerical_cols is None:
-        numerical_cols = DEFAULT_NUMERICAL_FEATURES
-    if categorical_cols is None:
-        categorical_cols = DEFAULT_CATEGORICAL_FEATURES
+    preprocessor = build_preprocessor(
+        numerical_cols=numerical_cols,
+        categorical_cols=categorical_cols,
+    )
 
-    feature_names = list(numerical_cols)
-
-    try:
-        cat_encoder = preprocessor.named_transformers_["cat"].named_steps["onehot"]
-        encoded_cat_names = cat_encoder.get_feature_names_out(categorical_cols).tolist()
-        feature_names.extend(encoded_cat_names)
-    except Exception:
-        # Fallback genérico si no ha sido ajustado
-        pass
-
-    return feature_names
+    pipeline = Pipeline(
+        steps=[
+            ("preprocessor", preprocessor),
+            ("model", model),
+        ]
+    )
+    return pipeline

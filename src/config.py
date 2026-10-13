@@ -1,9 +1,9 @@
 """
 config.py — Configuración centralizada, rutas canónicas y constantes del proyecto.
 
-Centraliza todas las rutas relativas al proyecto, URLs de datos oficiales,
+Centraliza todas las rutas relativas al proyecto, fuente de datos en Kaggle,
 semillas aleatorias y esquemas de columnas para garantizar reproducibilidad
-entre todos los miembros del equipo.
+entre todos los miembros del equipo y evaluadores.
 """
 
 from pathlib import Path
@@ -23,71 +23,88 @@ DOCS_DIR = BASE_DIR / "docs"
 NOTEBOOKS_DIR = BASE_DIR / "notebooks"
 REPORTS_DIR = BASE_DIR / "reports"
 
-# Archivos específicos de datos
-RAW_CSV_PATH = RAW_DATA_DIR / "incidentes_viales.csv"
-SAMPLE_CSV_PATH = RAW_DATA_DIR / "incidentes_viales_sample.csv"
-PROCESSED_CSV_PATH = PROCESSED_DATA_DIR / "incidentes_viales_limpio.csv"
+# ==============================================================================
+# FUENTE OFICIAL DE DATOS: KAGGLE / BTS (Bureau of Transportation Statistics)
+# ==============================================================================
+KAGGLE_DATASET_SLUG = "umerhafeezsiddiqui/2021-2026-us-flights"
 
-# ==============================================================================
-# FUENTE OFICIAL DE DATOS ABIERTOS (MEData / Alcaldía de Medellín)
-# ==============================================================================
-MEDATA_CSV_URL = (
-    "http://medata.gov.co/sites/default/files/distribution/1-023-25-000094/incidentes_viales.csv"
-)
+# Periodo de estudio oficial: Junio 2025 a Mayo 2026 (12 meses calendario completos)
+STUDY_PERIOD_FILES = [
+    "Jun-2025.csv",
+    "Jul-2025.csv",
+    "Aug-2025.csv",
+    "Sep-2025.csv",
+    "Oct-2025.csv",
+    "Nov-2025.csv",
+    "Dec-2025.csv",
+    "Jan-2026.csv",
+    "Feb-2026.csv",
+    "Mar-2026.csv",
+    "Apr-2026.csv",
+    "May-2026.csv",
+]
+
+# Rutas de archivos procesados y representativos para ejecución reproducible
+PROCESSED_DATA_PATH = PROCESSED_DATA_DIR / "us_flights_2025_2026_full.parquet"
+SAMPLE_DATA_PATH = PROCESSED_DATA_DIR / "us_flights_sample_reproducible.csv"
+SAMPLE_PARQUET_PATH = PROCESSED_DATA_DIR / "us_flights_sample_reproducible.parquet"
 
 # ==============================================================================
 # PARÁMETROS GLOBALES DE MACHINE LEARNING Y REPRODUCIBILIDAD
 # ==============================================================================
 RANDOM_STATE = 42
 TEST_SIZE = 0.20
-VALIDATION_SIZE = 0.20
 CV_FOLDS = 5
 
 # ==============================================================================
-# ESQUEMA DE COLUMNAS ESTANDARIZADAS (ASCII-Friendly)
+# DEFINICIÓN DEL TARGET Y ESQUEMA DE COLUMNAS
 # ==============================================================================
-STANDARD_COLUMNS = [
-    "ANIO",
-    "CBML",
-    "CLASE_ACCIDENTE",
-    "DIRECCION",
-    "DIRECCION_ENCASILLADA",
-    "DISENO",
-    "EXPEDIENTE",
-    "FECHA_ACCIDENTE",
-    "FECHA_ACCIDENTES",
-    "GRAVEDAD_ACCIDENTE",
-    "MES",
-    "NRO_RADICADO",
-    "NUMCOMUNA",
-    "BARRIO",
-    "COMUNA",
-    "LOCATION",
-    "X",
-    "Y",
+# Variable objetivo principal (Clasificación binaria estándar FAA / DOT):
+# 1 = Vuelo con retraso significativo en llegada (ArrDelay >= 15 min)
+# 0 = Vuelo puntual o adelantado (ArrDelay < 15 min)
+TARGET_COLUMN = "ARR_DEL15"
+CONTINUOUS_TARGET_COLUMN = "ARR_DELAY"
+
+# Columnas disponibles exclusivamente en etapa PRE-VUELO (Itinerario CRS):
+PRE_FLIGHT_FEATURES = [
+    "MONTH",
+    "DAY_OF_MONTH",
+    "DAY_OF_WEEK",
+    "OP_UNIQUE_CARRIER",
+    "ORIGIN",
+    "DEST",
+    "CRS_DEP_HOUR",
+    "CRS_ARR_HOUR",
+    "CRS_ELAPSED_TIME",
+    "DISTANCE",
 ]
 
-# Variable objetivo original en MEData: 'Con heridos', 'Solo daños', 'Con muertos'
-TARGET_COLUMN = "GRAVEDAD_ACCIDENTE"
-
-# Variable objetivo binaria para clasificación supervisada:
-# 1 = Severo / Crítico ('Con heridos' o 'Con muertos')
-# 0 = No severo / Solo daños materiales ('Solo daños')
-BINARY_TARGET_COLUMN = "es_grave"
-
-# Identificadores administrativos que generan data leakage si se usan en el modelo
+# Variables POST-DESPEGUE o CAUSALES que constituyen DATA LEAKAGE estricto
+# Prohibidas para modelado predictivo antes del vuelo:
 LEAKAGE_COLS = [
-    "EXPEDIENTE",
-    "NRO_RADICADO",
-    "CBML",
-    "FECHA_ACCIDENTES",  # Duplicado en formato ISO de FECHA_ACCIDENTE
+    "DEP_TIME",
+    "DEP_DELAY",
+    "DEP_DEL15",
+    "TAXI_OUT",
+    "WHEELS_OFF",
+    "WHEELS_ON",
+    "TAXI_IN",
+    "ARR_TIME",
+    "ARR_DELAY",  # Fuga si se usa como feature; se conserva solo como derivador de target
+    "ACTUAL_ELAPSED_TIME",
+    "AIR_TIME",
+    "CARRIER_DELAY",
+    "WEATHER_DELAY",
+    "NAS_DELAY",
+    "SECURITY_DELAY",
+    "LATE_AIRCRAFT_DELAY",
 ]
 
-# Columnas espaciales y geográficas
-SPATIAL_COLS = ["COMUNA", "BARRIO", "NUMCOMUNA", "LOCATION", "X", "Y"]
+# Columnas administrativas / redundantes no generalizables:
+ADMIN_COLS = [
+    "TAIL_NUM",
+    "OP_CARRIER_FL_NUM",
+    "ORIGIN_AIRPORT_ID",
+    "DEST_AIRPORT_ID",
+]
 
-# Columnas temporales
-TEMPORAL_COLS = ["FECHA_ACCIDENTE", "MES", "ANIO"]
-
-# Columnas del incidente y geometría de la vía
-ROAD_COLS = ["CLASE_ACCIDENTE", "DISENO", "DIRECCION", "DIRECCION_ENCASILLADA"]

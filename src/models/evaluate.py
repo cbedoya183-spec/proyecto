@@ -49,15 +49,15 @@ def compute_classification_metrics(
     metrics = {
         "modelo": model_name,
         "accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
-        "precision_grave": round(float(precision_score(y_true, y_pred, pos_label=1, zero_division=0)), 4),
-        "recall_grave": round(float(recall_score(y_true, y_pred, pos_label=1, zero_division=0)), 4),
-        "f1_grave": round(float(f1_score(y_true, y_pred, pos_label=1, zero_division=0)), 4),
+        "precision_retraso": round(float(precision_score(y_true, y_pred, pos_label=1, zero_division=0)), 4),
+        "recall_retraso": round(float(recall_score(y_true, y_pred, pos_label=1, zero_division=0)), 4),
+        "f1_retraso": round(float(f1_score(y_true, y_pred, pos_label=1, zero_division=0)), 4),
         "f1_macro": round(float(f1_score(y_true, y_pred, average="macro", zero_division=0)), 4),
     }
 
     if y_proba is not None:
         try:
-            # Si y_proba tiene 2 columnas, tomar la columna 1 (probabilidad de clase positiva)
+            # Si y_proba tiene 2 columnas, tomar la columna 1 (probabilidad de clase retrasada)
             proba_pos = y_proba[:, 1] if y_proba.ndim == 2 else y_proba
             metrics["roc_auc"] = round(float(roc_auc_score(y_true, proba_pos)), 4)
             metrics["pr_auc"] = round(float(average_precision_score(y_true, proba_pos)), 4)
@@ -85,7 +85,7 @@ def plot_confusion_matrix(
     cm = confusion_matrix(y_true, y_pred)
     cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
 
-    labels = ["0: Solo Daños", "1: Heridos/Muertos"]
+    labels = ["0: Puntual", "1: Retrasado (>= 15 min)"]
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)

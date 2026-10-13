@@ -1,243 +1,181 @@
 """
-build_features.py — Ingeniería de características para siniestros viales en Medellín.
+build_features.py — Ingeniería de características para predicción de retrasos en vuelos comerciales (EE.UU.).
 
 Contiene funciones modulares para:
-1. Normalización del target de negocio ('es_grave': 0 vs 1).
-2. Extracción de características temporales (hora, día de la semana, fin de semana, franja horaria).
-3. Transformaciones cíclicas de tiempo (seno/coseno de hora).
-4. Normalización de características espaciales y de infraestructura vial (comuna, clase de accidente, diseño).
+1. Normalización del target de negocio ('ARR_DEL15': 0 vs 1).
+2. Extracción de variables temporales y de calendario (día de semana, mes, estación, fin de semana).
+3. Descomposición y fraccionamiento de horarios programados CRS (hora salida/llegada, bloque horario).
+4. Categorización y variables de red de aviación (distancia, hubs congestionados, aerolíneas).
+5. Aislamiento y exclusión estricta de variables de Data Leakage.
 """
 
 import sys
 from pathlib import Path
 
-# Garantizar raíz en sys.path para importación
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import re
 import numpy as np
 import pandas as pd
 
 from src.config import (
     TARGET_COLUMN,
-    BINARY_TARGET_COLUMN,
+    CONTINUOUS_TARGET_COLUMN,
     LEAKAGE_COLS,
+    ADMIN_COLS,
 )
 from src.utils.logger import get_logger
 
 logger = get_logger("build_features")
 
+# Top 10 aeropuertos con mayor volumen de tráfico y congestión en EE.UU. (FAA/BTS)
+TOP_HUBS = {"ATL", "ORD", "DFW", "DEN", "CLT", "LAX", "JFK", "MIA", "MCO", "EWR"}
 
-def clean_target_column(df: pd.DataFrame) -> pd.DataFrame:
+
+def clean_flight_target(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Normaliza el target 'GRAVEDAD_ACCIDENTE' y crea la variable binaria 'es_grave'.
-
-    1 = Severo / Crítico: 'Con heridos' o 'Con muertos'
-    0 = No severo / Solo daños materiales: 'Solo daños'
-
-    Elimina registros con target nulo si existieran.
+    Filtra vuelos completados (no cancelados ni desviados) y asegura la integridad
+    de la variable objetivo binaria 'ARR_DEL15'.
     """
     df = df.copy()
-
-    # Eliminar nulos en el target si los hay
     initial_rows = len(df)
+
+    # Excluir vuelos cancelados o desviados
+    if "CANCELLED" in df.columns:
+        df = df[df["CANCELLED"] == 0]
+    if "DIVERTED" in df.columns:
+        df = df[df["DIVERTED"] == 0]
+
+    # Eliminar nulos en el target si existieran
     df = df.dropna(subset=[TARGET_COLUMN]).copy()
+    df[TARGET_COLUMN] = df[TARGET_COLUMN].astype(int)
+
     dropped = initial_rows - len(df)
     if dropped > 0:
-        logger.warning(f"Se eliminaron {dropped} filas con target nulo.")
+        logger.info(f"Se descartaron {dropped} vuelos cancelados, desviados o con target ausente.")
 
-    target_str = (
-        df[TARGET_COLUMN]
-        .astype(str)
-        .str.strip()
-        .str.lower()
-    )
-
-    # Detección robusta ante acentos o variaciones de codificación
-    df[BINARY_TARGET_COLUMN] = np.where(
-        target_str.str.contains("herid|muert", regex=True),
-        1,
-        0,
-    )
-
+    delayed_count = df[TARGET_COLUMN].sum()
+    ontime_count = len(df) - delayed_count
+    delay_rate = (delayed_count / len(df)) * 100
     logger.info(
-        f"Target '{BINARY_TARGET_COLUMN}' generado: "
-        f"{df[BINARY_TARGET_COLUMN].sum():,} casos graves (1) vs "
-        f"{(df[BINARY_TARGET_COLUMN] == 0).sum():,} casos solo daños (0)."
+        f"Target '{TARGET_COLUMN}' preparado: {delayed_count:,} retrasados ({delay_rate:.2f}%) vs "
+        f"{ontime_count:,} puntuales ({100-delay_rate:.2f}%)."
     )
     return df
 
 
-def extract_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
+def extract_flight_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Parsea la columna de fecha y extrae variables temporales de alto valor predictivo.
+    Extrae componentes temporales pre-vuelo a partir de 'FL_DATE' y horarios programados CRS.
     """
     df = df.copy()
 
-    # Conversión a datetime
-    dt_series = pd.to_datetime(
-        df["FECHA_ACCIDENTE"],
-        format="%d/%m/%Y %H:%M:%S",
-        errors="coerce",
-    )
+    # Conversión de FL_DATE
+    if "FL_DATE" in df.columns:
+        dt = pd.to_datetime(df["FL_DATE"], errors="coerce")
+        df["DAY_OF_WEEK"] = dt.dt.dayofweek  # 0: Lunes, 6: Domingo
+        df["IS_WEEKEND"] = df["DAY_OF_WEEK"].isin([5, 6]).astype(int)
+    else:
+        if "DAY_OF_WEEK" not in df.columns and "DAY_OF_MONTH" in df.columns:
+            df["DAY_OF_WEEK"] = df["DAY_OF_MONTH"] % 7
+            df["IS_WEEKEND"] = df["DAY_OF_WEEK"].isin([5, 6]).astype(int)
 
-    df["hora"] = dt_series.dt.hour
-    df["dia_semana"] = dt_series.dt.dayofweek  # 0: Lunes, 6: Domingo
-    df["es_fin_de_semana"] = df["dia_semana"].isin([5, 6]).astype(int)
-
-    # Franja horaria para análisis de negocio y turnos de emergencia
-    def categorizar_franja(hora):
-        if pd.isna(hora):
-            return "Desconocida"
-        hora = int(hora)
-        if 0 <= hora < 6:
-            return "Madrugada (00-05)"
-        elif 6 <= hora < 9:
-            return "Pico Mañana (06-08)"
-        elif 9 <= hora < 12:
-            return "Mañana (09-11)"
-        elif 12 <= hora < 15:
-            return "Mediodía (12-14)"
-        elif 15 <= hora < 18:
-            return "Tarde (15-17)"
-        elif 18 <= hora < 21:
-            return "Pico Noche (18-20)"
+    # Estación climática (afecta clima invernal y tormentas de verano)
+    # 1: Invierno (Dic, Ene, Feb), 2: Primavera (Mar, Abr, May), 3: Verano (Jun, Jul, Ago), 4: Otoño (Sep, Oct, Nov)
+    def asignar_estacion(mes):
+        if mes in [12, 1, 2]:
+            return "Invierno"
+        elif mes in [3, 4, 5]:
+            return "Primavera"
+        elif mes in [6, 7, 8]:
+            return "Verano"
         else:
-            return "Noche (21-23)"
+            return "Otono"
 
-    df["franja_horaria"] = df["hora"].apply(categorizar_franja)
+    df["SEASON"] = df["MONTH"].apply(asignar_estacion)
 
-    # Componentes cíclicas de la hora (seno y coseno) para modelos lineales y distancias
-    df["hora_sin"] = np.sin(2 * np.pi * df["hora"] / 24.0)
-    df["hora_cos"] = np.cos(2 * np.pi * df["hora"] / 24.0)
+    # Extraer horas enteras de los horarios programados en formato HHMM (CRS_DEP_TIME y CRS_ARR_TIME)
+    def hhmm_to_hour(val):
+        if pd.isna(val):
+            return 12  # Mediodía como imputación razonable
+        try:
+            val_int = int(val)
+            return min(23, max(0, val_int // 100))
+        except (ValueError, TypeError):
+            return 12
 
-    # Componentes cíclicas del mes
-    mes_val = df["MES"].fillna(dt_series.dt.month).fillna(1).astype(int)
-    df["mes_sin"] = np.sin(2 * np.pi * mes_val / 12.0)
-    df["mes_cos"] = np.cos(2 * np.pi * mes_val / 12.0)
+    df["CRS_DEP_HOUR"] = df["CRS_DEP_TIME"].apply(hhmm_to_hour)
+    df["CRS_ARR_HOUR"] = df["CRS_ARR_TIME"].apply(hhmm_to_hour)
+
+    # Franja horaria de salida (El efecto cascada de demoras crece en la tarde/noche)
+    def categorizar_bloque_salida(hora):
+        if 0 <= hora < 6:
+            return "Madrugada_00_05"
+        elif 6 <= hora < 12:
+            return "Manana_06_11"
+        elif 12 <= hora < 18:
+            return "Tarde_12_17"
+        else:
+            return "Noche_18_23"
+
+    df["DEP_TIME_BLOCK"] = df["CRS_DEP_HOUR"].apply(categorizar_bloque_salida)
 
     return df
 
 
-def clean_categorical_features(df: pd.DataFrame) -> pd.DataFrame:
+def extract_route_network_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Estandariza categorías en COMUNA, CLASE_ACCIDENTE y DISENO,
-    agrupando etiquetas de baja frecuencia y normalizando textos.
+    Genera características de red de transporte aéreo: distancia categorizada
+    e indicadores de congestión en aeropuertos principales (Hubs).
     """
     df = df.copy()
 
-    # Normalización de COMUNA
-    if "COMUNA" in df.columns:
-        comunas_validas = [
-            "La Candelaria", "Laureles Estadio", "Castilla", "El Poblado",
-            "Guayabal", "Robledo", "Belén", "Aranjuez", "Buenos Aires",
-            "San Javier", "Villa Hermosa", "Doce de Octubre", "Manrique",
-            "Popular", "Santa Cruz", "San Antonio de Prado", "San Cristóbal",
-            "Santa Elena", "San Sebastián de Palmitas", "Altavista",
-        ]
-        
-        def normalizar_comuna(c):
-            if pd.isna(c):
-                return "DESCONOCIDA"
-            c = str(c).strip()
-            # Unificar Belén
-            if "bel" in c.lower():
-                return "Belén"
-            for cv in comunas_validas:
-                if cv.lower() in c.lower():
-                    return cv
-            return "OTRA_COMUNA"
+    # Indicador de si el origen o destino es un Hub de alto tráfico
+    df["ORIGIN_IS_HUB"] = df["ORIGIN"].isin(TOP_HUBS).astype(int)
+    df["DEST_IS_HUB"] = df["DEST"].isin(TOP_HUBS).astype(int)
+    df["IS_HUB_TO_HUB"] = ((df["ORIGIN_IS_HUB"] == 1) & (df["DEST_IS_HUB"] == 1)).astype(int)
 
-        df["comuna_limpia"] = df["COMUNA"].apply(normalizar_comuna)
+    # Categorización de distancia de vuelo
+    # Corta: < 500 millas, Media: 500-1500 millas, Larga: > 1500 millas
+    def categorizar_distancia(dist):
+        if pd.isna(dist):
+            return "Media"
+        if dist < 500:
+            return "Corta"
+        elif dist <= 1500:
+            return "Media"
+        else:
+            return "Larga"
 
-    # Normalización de CLASE_ACCIDENTE
-    if "CLASE_ACCIDENTE" in df.columns:
-        def normalizar_clase(cl):
-            if pd.isna(cl):
-                return "Otro"
-            cl = str(cl).strip().lower()
-            if "choque" in cl:
-                return "Choque"
-            elif "atropello" in cl:
-                return "Atropello"
-            elif "caida" in cl or "caída" in cl:
-                return "Caída de Ocupante"
-            elif "volcamiento" in cl:
-                return "Volcamiento"
-            elif "incendio" in cl:
-                return "Incendio"
-            else:
-                return "Otro"
-
-        df["clase_accidente_limpia"] = df["CLASE_ACCIDENTE"].apply(normalizar_clase)
-
-    # Normalización de DISENO (geometría de vía)
-    if "DISENO" in df.columns:
-        def normalizar_diseno(d):
-            if pd.isna(d):
-                return "Tramo de via"
-            d = str(d).strip().lower()
-            if "tramo" in d:
-                return "Tramo de via"
-            elif "intersecci" in d:
-                return "Intersección"
-            elif "glorieta" in d:
-                return "Glorieta"
-            elif "puente" in d:
-                return "Puente"
-            elif "paso a nivel" in d:
-                return "Paso a Nivel"
-            elif "lote" in d:
-                return "Lote o Predio"
-            elif "tunel" in d or "túnel" in d:
-                return "Túnel"
-            else:
-                return "Otro"
-
-        df["diseno_limpio"] = df["DISENO"].apply(normalizar_diseno)
-
-    # Extracción de tipo de vía a partir de DIRECCION (CR, CL, AV, TV, DG, etc.)
-    if "DIRECCION" in df.columns:
-        def extraer_tipo_via(dir_str):
-            if pd.isna(dir_str):
-                return "DESCONOCIDA"
-            dir_str = str(dir_str).strip().upper()
-            match = re.match(r"^(CR|CL|AV|TV|DG|CQ|AU)\b", dir_str)
-            if match:
-                return match.group(1)
-            elif "AUTOPISTA" in dir_str:
-                return "AU"
-            elif "AVENIDA" in dir_str or "AV " in dir_str:
-                return "AV"
-            return "OTRO"
-
-        df["tipo_via"] = df["DIRECCION"].apply(extraer_tipo_via)
+    df["DISTANCE_CAT"] = df["DISTANCE"].apply(categorizar_distancia)
 
     return df
 
 
-def drop_leakage_columns(df: pd.DataFrame) -> pd.DataFrame:
+def isolate_preflight_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Elimina identificadores administrativos posteriores al hecho (Data Leakage).
+    Aísla las columnas predictoras disponibles en pre-vuelo y elimina
+    de forma garantizada cualquier variable de fuga de información (data leakage).
     """
     df = df.copy()
-    cols_to_drop = [c for c in LEAKAGE_COLS if c in df.columns]
-    if cols_to_drop:
-        logger.info(f"Eliminando columnas con fuga de datos: {cols_to_drop}")
-        df = df.drop(columns=cols_to_drop)
+
+    # Columnas prohibidas que deben removerse
+    cols_to_drop = [c for c in (LEAKAGE_COLS + ADMIN_COLS) if c in df.columns]
+    df = df.drop(columns=cols_to_drop, errors="ignore")
+
+    logger.info(f"Columnas tras eliminación estricta de leakage: {len(df.columns)}")
     return df
 
 
-def prepare_full_dataset(df_raw: pd.DataFrame) -> pd.DataFrame:
+def build_full_feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Aplica el flujo completo de ingeniería de características al dataframe crudo.
+    Ejecuta el pipeline completo de ingeniería de características sobre el DataFrame.
     """
-    logger.info("Iniciando preparación e ingeniería de características...")
-    df = clean_target_column(df_raw)
-    df = extract_temporal_features(df)
-    df = clean_categorical_features(df)
-    df = drop_leakage_columns(df)
-    logger.info(f"Dataset preparado: {df.shape[0]:,} filas x {df.shape[1]} columnas.")
-    return df
+    logger.info(f"Iniciando ingeniería de características sobre {len(df):,} registros...")
+    df_clean = clean_flight_target(df)
+    df_feat = extract_flight_temporal_features(df_clean)
+    df_feat = extract_route_network_features(df_feat)
+    df_final = isolate_preflight_features(df_feat)
+    logger.info("Ingeniería de características finalizada con éxito.")
+    return df_final
