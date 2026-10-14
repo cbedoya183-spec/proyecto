@@ -1,0 +1,41 @@
+GUION DE LA EXPOSICIÓN  (sesión 9, presencial · el código corre en vivo)
+========================================================================
+Orden fijo del enunciado: 1) problema y regla a mano  2) página de los datos abierta
+3) limpieza y columnas  4) código corriendo  5) métricas y modelo elegido.
+
+ANTES DE ENTRAR AL SALÓN
+ [ ] Datos ya descargados en datos/crudos/ (13 CSV) y probado en el computador del salón o el nuestro.
+ [ ] Kernel → Restart & Run All una vez completo, sin errores.
+ [ ] MODO_RAPIDO = True y SEMILLA = 42.
+ [ ] modelos/modelo_elegido.joblib guardado (por si el entrenamiento se demora).
+ [ ] Pestaña de Kaggle abierta en la página del dataset.
+ [ ] Las cifras de las láminas coinciden con resultados/resumen_final.json.
+
+GUION (tiempos sugeridos; ajustar al tiempo que dé el profesor)
+ 1. El problema y la regla a mano (2 min)
+    Pregunta, por qué importa, tabla de "¿hace falta ML?", regla "sale tarde -> se retrasa".
+ 2. La página de los datos, abierta (2 min)
+    Dirección, autor, licencia, cómo se descarga, qué es una fila, filas y columnas, etiqueta.
+ 3. Limpieza y columnas (4 min)
+    Nulos, cancelados, duplicados; tabla antes/después; columnas creadas (rotación de la aeronave,
+    congestión); demo de fuga con DEP_DELAY (AUC se dispara).
+ 4. El código corriendo (4 min)
+    Ejecutar las celdas de modelos en vivo; mostrar la salida de la validación cruzada.
+ 5. Métricas y modelo elegido (3 min)
+    Tabla de todos los modelos + línea base + regla; regla de elección; prueba final con el futuro;
+    importancia de columnas; dónde falla.
+
+REPARTO
+ Equipo de 2 (exponen los dos):  Integrante A = puntos 1, 2 y 3 · Integrante B = puntos 4 y 5.
+ Equipo de 4 (el profesor escoge quién expone ese día): los cuatro deben poder explicar CUALQUIER parte.
+   Sugerencia de estudio: cada uno prepara un paso como "titular" y los otros tres lo repasan.
+   A = pasos 1-2 · B = pasos 3-4 (limpieza y columnas) · C = paso 5 (modelos) · D = paso 6 (evaluación).
+
+PREGUNTAS QUE PUEDEN HACER (preparar respuesta)
+ - ¿Por qué no usar DEP_DELAY si mejora tanto el AUC?  (porque es fuga: no se conoce a la hora de salida programada)
+ - ¿Por qué temporal y no una partición aleatoria?  (en la vida real se predice el futuro con el pasado)
+ - ¿Por qué ganó ese modelo y no el de mayor AUC?  (regla de elección: el más simple dentro del margen)
+ - ¿Qué significa el umbral y por qué no 0,5?  (clases desbalanceadas; se maximiza F1 en validación)
+ - ¿Por qué TargetEncoder dentro del Pipeline?  (para no filtrar la etiqueta entre pliegues)
+ - ¿Qué pasa con los vuelos cancelados?  (no tienen etiqueta; se usan solo para congestión y rotación)
+ - ¿Qué limitaciones tiene?  (sin clima, sin tráfico aéreo en tiempo real)

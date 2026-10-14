@@ -1,0 +1,44 @@
+DECISIONES DE LIMPIEZA Y COLUMNAS  (pasos 3 y 4)
+================================================
+Cada decisión se imprime con su conteo en el notebook. Copien aquí las cifras de SU corrida.
+
+LIMPIEZA
+ 1. Nulos por columna (34 columnas, 13 meses): se calculan al leer cada archivo.
+    Las 5 columnas de causas del retraso tienen > 50 % de nulos -> se descartan (y además son fuga).
+ 2. Horarios/duración/distancia inválidos (nulos, <= 0): se eliminan. Filas eliminadas: ______
+ 3. Cancelados / desviados / sin ARR_DEL15: no tienen etiqueta. Se marcan con tiene_etiqueta y se
+    filtran AL FINAL del paso 4 (sus horarios programados cuentan para congestión y rotación,
+    así que no se borran antes). Cancelados: ____ %  Desviados: ____ %
+ 4. Coherencia de la etiqueta: ARR_DEL15 coincide con (ARR_DELAY >= 15) en ____ % de las filas.
+ 5. Duplicados (fecha+aerolínea+vuelo+origen+destino+hora): ______ filas.
+ 6. Formatos: fecha armada con YEAR/MONTH/DAY_OF_MONTH (FL_DATE es ambiguo); horas hhmm -> minutos;
+    se maneja el caso 2400.
+ 7. Atípicos: retrasos de más de un día son reales. Como etiqueta no molestan; como variable
+    (ret_prev_llegada) se recortan a [-60, 360] minutos con constantes fijas (sin ajustar con los
+    datos, por eso no hay fuga).
+
+FALTANTES (experimento del notebook)
+ - Variable con faltantes: ret_prev_llegada (no hay tramo anterior, o aún no había aterrizado).
+ - El faltante NO es aleatorio -> se conserva la bandera prev_disponible.
+ - Se ocultó el 25 % de los valores conocidos y se midió el MAE de: media global, mediana global,
+   mediana por hora de salida y regresión (HistGB). Resultados: (copiar la tabla del notebook)
+       Media global: ____   Mediana global: ____   Mediana por hora: ____   Regresión: ____
+ - Decisión en el Pipeline: mediana + bandera prev_disponible. Justificación: ______________
+
+TRANSFORMACIONES DENTRO DEL PIPELINE (sin fuga entre pliegues)
+ - Numéricas: SimpleImputer(mediana) y, para regresión logística y red neuronal, StandardScaler.
+ - Categóricas (aerolínea, origen, destino, día de la semana): TargetEncoder (codificación por
+   objetivo con validación cruzada interna), ajustado solo con datos de entrenamiento.
+ - Se descartó mes como variable: con partición temporal, los meses de prueba no existen en el
+   entrenamiento.
+
+PREVENCIÓN DE FUGAS
+ - Regla: solo entra lo que se conoce a la hora de salida programada.
+ - El notebook tiene un assert que impide meter DEP_DELAY, ARR_DELAY o la etiqueta a X.
+ - Demostración de fuga en el notebook: AUC sin DEP_DELAY = ____ ; con DEP_DELAY = ____.
+ - ret_prev_llegada solo se llena si el tramo anterior ya aterrizó ANTES de la salida programada.
+ - Los conteos de congestión usan vuelos PROGRAMADOS (incluidos los cancelados), porque el número
+   de cancelados no se conoce de antemano.
+
+TABLA ANTES / DESPUÉS
+ Ver resultados/tabla_columnas.csv (la genera el notebook) y docs/02_diccionario_columnas.txt.

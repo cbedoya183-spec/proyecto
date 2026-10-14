@@ -1,0 +1,25 @@
+# Datos pesados: GitHub rechaza archivos de más de 100 MB. Se descargan con scripts/00_descargar.py
+datos/crudos/*
+datos/procesados/*
+datos/externos/*
+!datos/crudos/.gitkeep
+!datos/procesados/.gitkeep
+!datos/externos/.gitkeep
+
+# Modelos: solo se versiona el final (pequeño) para la exposición
+modelos_guardados/*.joblib
+!modelos_guardados/modelo_final.joblib
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Credenciales: NUNCA al repositorio
+kaggle.json
+.env
+.DS_Store

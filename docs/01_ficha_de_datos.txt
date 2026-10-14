@@ -1,0 +1,46 @@
+FICHA DE DATOS  (pasos 1 y 2 · ¿ML? y Datos)
+============================================
+
+Página:           https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights
+Publica:          usuario de Kaggle "umerhafeezsiddiqui" (dataset "2021-2026-US_Flights")
+Fuente original:  COMPLETAR. Los nombres de columnas son los del reporte On-Time Performance
+                  del Bureau of Transportation Statistics (US DOT); confirmen en la página
+                  del dataset qué fuente declara el autor.
+Licencia:         COMPLETAR (está en la barra lateral de la página de Kaggle).
+Fecha de descarga: COMPLETAR
+
+Cómo se descargan
+  Archivos CSV mensuales (Mmm-AAAA.csv) con kagglehub:
+      kagglehub.dataset_download("umerhafeezsiddiqui/2021-2026-us-flights")
+  El notebook usa los 13 archivos de May-2025 a May-2026 y los copia a datos/crudos/.
+  No hay que unir tablas distintas: todos los meses tienen las mismas 34 columnas
+  (el notebook lo verifica), pero sí hay que concatenar 13 archivos.
+
+Qué es una fila
+  Un vuelo programado: un tramo origen -> destino, de una aerolínea, en una fecha.
+
+Tamaño (completar con lo que imprime el notebook en la celda de carga)
+  Filas: ______ (aprox. 8,5 millones)      Columnas originales: 34
+
+Etiqueta
+  retraso15 = 1 si el vuelo llegó con 15 minutos o más de retraso (columna ARR_DEL15), 0 si no.
+  Es una definición oficial de la industria (un vuelo se considera "retrasado" desde 15 min).
+  Cancelados y desviados no tienen llegada normal, por eso quedan fuera de la etiqueta.
+
+¿Por qué vale la pena predecirla?
+  - La aerolínea puede reasignar puertas y tripulación antes de que ocurra el problema.
+  - El pasajero puede reorganizar una conexión.
+  - Se predice a la hora de salida programada, así que sirve para actuar.
+
+Regla a mano (punto de comparación)
+  "Si el vuelo sale a partir de cierta hora del día, se retrasará". El notebook busca la hora
+  de corte con los datos de entrenamiento y mide la regla con la misma validación que los modelos.
+
+Por qué el problema es complejo (para el criterio "Complejidad", 25 %)
+  - Datos crudos, no un archivo ya limpio: nulos, cancelados, desviados, horas en formato hhmm.
+  - 13 archivos con ~8,5 millones de filas: hay que manejar memoria (tipos compactos).
+  - Una tabla propia construida por nosotros: la rotación de cada aeronave (retraso del tramo
+    anterior) se arma ordenando por TAIL_NUM y deduciendo husos horarios, sin dato externo.
+  - Clases desbalanceadas (~20-28 % retrasados) y validación temporal (entrenar con el pasado,
+    probar con el futuro).
+  - Riesgo de fuga muy alto: la mayoría de columnas del archivo se miden durante el vuelo.

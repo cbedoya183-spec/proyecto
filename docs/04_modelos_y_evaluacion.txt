@@ -1,0 +1,43 @@
+MODELOS Y EVALUACIÓN  (pasos 5 y 6)
+====================================
+
+VALIDACIÓN (la misma para todos los modelos)
+ - Partición temporal: el último 15 % del tiempo (~2 meses) es la PRUEBA FINAL y no se usa para elegir.
+ - Con el 85 % anterior se toma una muestra y se hace validación cruzada estratificada
+   (3 pliegues en modo rápido, 5 en modo completo), semilla 42.
+ - El preprocesamiento va dentro del Pipeline, así que se ajusta en cada pliegue.
+
+MODELOS COMPARADOS (familias distintas)
+ - Línea base: siempre "a tiempo" (clase mayoritaria).
+ - Regla a mano: "si sale a partir de la hora X, se retrasa".
+ - Lineal: regresión logística.
+ - Árboles: árbol de decisión, random forest.
+ - Boosting: HistGradientBoosting y XGBoost (si está instalado).
+ - Red neuronal: MLP (64, 32).
+ - No se usan KNN ni SVM con kernel: con cientos de miles de filas son demasiado lentos para
+   la exposición en vivo y no aportan una familia nueva.
+
+MÉTRICAS (y por qué)
+ - Clase positiva (retrasado) minoritaria -> la exactitud sola engaña (la línea base ya acierta ~70-80 %).
+ - AUC-ROC: métrica principal (no depende del umbral).
+ - PR-AUC: mide qué tan bien se encuentran los retrasos reales.
+ - F1, Recall y Precisión con el umbral que maximiza F1 en validación.
+ - Costo del error: un falso negativo (no avisar un retraso) cuesta más que un falso positivo.
+
+REGLA DE ELECCIÓN (fijada antes de mirar la prueba final)
+ Entre los modelos de ML cuyo AUC está dentro de una desviación típica del mejor, se elige el MÁS SIMPLE.
+ (Orden de complejidad en el notebook: logística < árbol < random forest < HistGB < MLP < XGBoost.)
+
+RESULTADOS (copiar de resultados/tabla_modelos_cv.csv y tabla_prueba_final.csv)
+ Modelo elegido: ____________      Umbral: ____
+ Prueba final (futuro):  AUC ____   PR-AUC ____   F1 ____   Recall ____   Precisión ____
+ Regla a mano:           AUC ____   F1 ____
+ Línea base:             exactitud ____
+
+ARGUMENTO DE LA ELECCIÓN (escribirlo con sus números)
+ ____________________________________________________________________________
+
+LÍMITES
+ - No hay datos de clima ni de tráfico aéreo en tiempo real.
+ - Solo se usa lo conocido a la salida programada.
+ - Con MODO_RAPIDO = True los números varían un poco frente a la corrida completa.

@@ -1,0 +1,51 @@
+DICCIONARIO DE COLUMNAS (las 34 del archivo original)
+=====================================================
+Rol: ENTRA = variable del modelo · CREA = se usa para construir otra · ETIQUETA · DESCARTA · FUGA
+
+YEAR, MONTH, DAY_OF_MONTH   Año, mes y día del vuelo.                          CREA (fecha, dia_semana, dias_a_festivo)
+FL_DATE                     Fecha en texto (06-01-25 00:00), ambiguo.           DESCARTA (se usa YEAR/MONTH/DAY)
+OP_UNIQUE_CARRIER           Código de la aerolínea operadora (ej. 9E, AA, DL).  ENTRA (categórica)
+TAIL_NUM                    Matrícula de la aeronave.                           CREA (rotación). No entra: es un identificador
+OP_CARRIER_FL_NUM           Número de vuelo.                                    DESCARTA (solo para detectar duplicados)
+ORIGIN_AIRPORT_ID           Id numérico del aeropuerto de origen.               DESCARTA (redundante con ORIGIN)
+ORIGIN                      Código IATA del aeropuerto de origen.               ENTRA (categórica)
+DEST_AIRPORT_ID             Id numérico del aeropuerto de destino.              DESCARTA (redundante con DEST)
+DEST                        Código IATA del aeropuerto de destino.              ENTRA (categórica)
+CRS_DEP_TIME                Hora programada de salida (hhmm, hora local).       CREA (hora_sal, hora_sal_dec)
+DEP_TIME                    Hora real de salida.                                FUGA
+DEP_DELAY                   Minutos de retraso en la salida (negativo=antes).   FUGA (solo en la demo de fuga)
+DEP_DEL15                   1 si la salida se retrasó >= 15 min.                FUGA
+TAXI_OUT                    Minutos de rodaje hasta el despegue.                FUGA
+WHEELS_OFF                  Hora real de despegue.                              FUGA
+WHEELS_ON                   Hora real de aterrizaje.                            FUGA
+TAXI_IN                     Minutos de rodaje tras aterrizar.                   FUGA
+CRS_ARR_TIME                Hora programada de llegada (hhmm, hora local).      CREA (hora_lleg)
+ARR_TIME                    Hora real de llegada.                               FUGA
+ARR_DELAY                   Minutos de retraso en la llegada.                   FUGA para el propio vuelo; el del tramo ANTERIOR sí se usa (ret_prev_llegada)
+ARR_DEL15                   1 si la llegada se retrasó >= 15 min.               ETIQUETA (retraso15)
+CANCELLED                   1 si el vuelo se canceló.                           Filtro (sin etiqueta)
+DIVERTED                    1 si el vuelo se desvió a otro aeropuerto.          Filtro (sin etiqueta)
+CRS_ELAPSED_TIME            Duración programada (min).                          ENTRA (numérica)
+ACTUAL_ELAPSED_TIME         Duración real (min).                                FUGA
+AIR_TIME                    Minutos en el aire.                                 FUGA
+DISTANCE                    Distancia en millas.                                ENTRA (numérica)
+CARRIER_DELAY               Minutos de retraso atribuidos a la aerolínea.       FUGA y > 50 % nulos
+WEATHER_DELAY               Minutos atribuidos al clima.                        FUGA y > 50 % nulos
+NAS_DELAY                   Minutos atribuidos al sistema aéreo nacional.       FUGA y > 50 % nulos
+SECURITY_DELAY              Minutos atribuidos a seguridad.                     FUGA y > 50 % nulos
+LATE_AIRCRAFT_DELAY         Minutos por llegada tardía de la aeronave previa.   FUGA y > 50 % nulos
+
+COLUMNAS CREADAS (conocidas a la hora de salida programada)
+hora_sal_dec, hora_lleg     Hora programada de salida (decimal) y de llegada.
+dia_semana                  0 = lunes ... 6 = domingo.
+dias_a_festivo              Días al festivo federal de EE. UU. más cercano (tope 7).
+vuelos_origen_hora          Vuelos programados en el aeropuerto de origen esa hora.
+vuelos_destino_hora         Vuelos programados en el aeropuerto de destino a la hora de llegada.
+tramo_del_dia               Número de tramo de la aeronave en el día.
+holgura_prog                Minutos programados entre el aterrizaje anterior y esta salida.
+ret_prev_llegada            Retraso de llegada del tramo anterior de la misma aeronave (solo si ya aterrizó
+                            antes de la salida programada), recortado a [-60, 360] min.
+prev_disponible             1 si ret_prev_llegada se conoce a la hora de salida.
+
+(Los significados siguen la documentación estándar del reporte On-Time Performance del BTS.
+ Verifíquenlos contra la descripción de la página del dataset.)

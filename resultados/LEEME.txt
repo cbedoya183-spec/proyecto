@@ -1,0 +1,9 @@
+Salidas que genera el notebook al correr:
+  tabla_columnas.csv           qué columnas entraron / se crearon / se descartaron
+  comparacion_imputacion.csv   error de cada opción para imputar ret_prev_llegada
+  tabla_modelos_cv.csv         todos los modelos con la misma validación cruzada
+  tabla_prueba_final.csv       modelo elegido vs regla a mano vs línea base (futuro)
+  importancia_columnas.csv     caída del AUC al barajar cada columna
+  error_por_franja.csv         dónde falla el modelo (franja horaria)
+  resumen_final.json           cifras clave para las láminas
+  figuras/*.png                gráficas

@@ -1,0 +1,30 @@
+RÚBRICA DEL PROFESOR  ↔  DÓNDE ESTÁ CADA PUNTO
+==============================================
+(Proyecto final = 30 % de la nota del curso)
+
+CRITERIO (peso)                       QUÉ SE MIRA                              DÓNDE ESTÁ EN EL PROYECTO
+Complejidad del problema (25 %)       Dificultad del problema y del origen     docs/01_ficha_de_datos.txt (sección "complejidad");
+                                      de los datos                             notebook pasos 2 y 4 (13 archivos, datos crudos,
+                                                                               tabla propia de rotación de aeronaves)
+Datos y transformación (25 %)         Fuente, limpieza, faltantes, columnas,   notebook pasos 3 y 4; docs/03; resultados/tabla_columnas.csv;
+                                      sin fugas                                demo de fuga; experimento de imputación
+Modelos (20 %)                        Varios modelos, bien ejecutados y        notebook paso 5; resultados/tabla_modelos_cv.csv
+                                      comparados
+Código en vivo (15 %)                 Corre de principio a fin y reproduce     notebook completo; MODO_RAPIDO; SEMILLA = 42;
+                                      los resultados                           modelos/modelo_elegido.joblib como respaldo
+Métricas y elección (15 %)            Métricas adecuadas y elección            notebook paso 6; docs/04; resultados/tabla_prueba_final.csv
+                                      argumentada
+
+QUÉ SE ENTREGA
+ [ ] Repositorio en GitHub con el código (y los datos o el enlace para descargarlos).
+     -> Los datos pesan ~1,2 GB: se entrega el enlace de Kaggle + el código que los baja.
+ [ ] README.txt con instrucciones de ejecución.
+
+CHECKLIST FINAL
+ [ ] Completé licencia y fuente en datos/LEEME_datos.txt y docs/01_ficha_de_datos.txt.
+ [ ] Corrí el notebook completo en modo completo (MODO_RAPIDO = False) y copié las cifras a docs/03 y docs/04.
+ [ ] Escribí las conclusiones (celdas marcadas con ✍️ en el notebook).
+ [ ] Las láminas usan las mismas cifras que resultados/resumen_final.json.
+ [ ] Probé Restart & Run All sin errores en MODO_RAPIDO = True.
+ [ ] Pusimos nombres de integrantes en README.txt.
+ [ ] Cada integrante puede explicar cualquier parte (equipos de 4).
