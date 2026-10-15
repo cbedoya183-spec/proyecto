@@ -1,7 +1,7 @@
 # ✈️ Modelo Predictivo de Retrasos en Vuelos Comerciales de EE.UU. (2025–2026)
 ### Proyecto Final — Especialización en Analítica y Ciencia de Datos / Machine Learning
 **Universidad EIA**  
-**Autor:** Sebastián Olaya  
+**Autores:** Sebastián Olaya Pérez, Carlos Daniel Bedoya Moreno, Santiago Felipe Espinel León, Julián Alzate Aristizábal  
 
 ![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![Scikit-Learn](https://img.shields.io/badge/scikit--learn-1.3%2B-orange.svg)
