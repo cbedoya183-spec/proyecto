@@ -30,7 +30,9 @@ Estas columnas están disponibles **antes del vuelo** (fase de programación/iti
 | `OP_UNIQUE_CARRIER` | Categórica | Código IATA de la aerolínea operadora (ej. WN, AA, DL, UA). | One-Hot Encoding (factor de flota y modelo operativo). |
 | `ORIGIN` | Categórica (IATA) | Código de 3 letras del aeropuerto de origen. | Agrupación de aeropuertos top + One-Hot Encoding. |
 | `DEST` | Categórica (IATA) | Código de 3 letras del aeropuerto de destino. | Agrupación de aeropuertos top + One-Hot Encoding. |
-| `CRS_DEP_HOUR` | Entero (0–23) | Hora programada de salida (extraída de `CRS_DEP_TIME`). | Escalado estándar (efecto cascada de demoras diurnas). |
+| `CRS_DEP_HOUR` | Entero (0–23) | Hora programada de salida (extraída de `CRS_DEP_TIME`). 2400 se lee como 00. Los vacíos no se rellenan aquí. | Imputación por mediana dentro del Pipeline, ajustada solo con entrenamiento. |
+| `CRS_DEP_SIN`, `CRS_DEP_COS` | Flotante | Seno y coseno de la hora programada (periodo 24). | La hora 23 queda junto a la 0 para los modelos lineales. |
+| `MONTH_SIN`, `MONTH_COS` | Flotante | Seno y coseno del mes (periodo 12). | Diciembre queda junto a enero. |
 | `CRS_ARR_HOUR` | Entero (0–23) | Hora programada de llegada (extraída de `CRS_ARR_TIME`). | Escalado estándar (congestión de arribo). |
 | `DEP_TIME_BLOCK` | Categórica | Franja horaria de salida (Madrugada, Mañana, Tarde, Noche). | One-Hot Encoding. |
 | `CRS_ELAPSED_TIME` | Flotante | Duración programada total del vuelo en minutos. | Imputación por mediana + StandardScaler. |
@@ -76,3 +78,10 @@ Las siguientes columnas **NO DEBEN SER USADAS** como predictoras porque se gener
 | `TAIL_NUM` | Matrícula de la aeronave | Descartado (cardinalidad extrema sin generalización en prueba). |
 | `ORIGIN_AIRPORT_ID` | Identificador numérico de origen | Descartado (redundante con `ORIGIN`). |
 | `DEST_AIRPORT_ID` | Identificador numérico de destino | Descartado (redundante con `DEST`). |
+| `S` | Columna vacía heredada del CSV | Descartada: todos sus valores son nulos. |
+
+---
+
+## 5. Imputación
+
+En los vuelos operados, `CRS_DEP_TIME` y `DISTANCE` vienen completos. `CRS_ELAPSED_TIME` falta en cuatro filas de todo el año. Aun así se esconde el 20 % de la duración programada del entrenamiento y se compara la media, la mediana global y la mediana por aerolínea. La mediana por aerolínea baja el error y es la que usa el Pipeline (`GroupMedianImputer`), ajustada solo con cada pliegue. El resto de las variables numéricas usa la mediana global dentro del `ColumnTransformer`.

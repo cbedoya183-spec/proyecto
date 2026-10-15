@@ -64,7 +64,7 @@ Para garantizar un modelo con utilidad real en producción, **toda la predicció
 
 ## 🏗️ 5. Estructura del Repositorio
 
-El proyecto sigue una arquitectura modular estándar de Data Science para garantizar reproducibilidad y ejecución en vivo:
+El proyecto sigue una arquitectura modular para que la corrida se pueda repetir:
 
 ```text
 Proyecto-final-Machine-Learning/
@@ -85,10 +85,16 @@ Proyecto-final-Machine-Learning/
 │
 ├── models/
 │   ├── best_model.joblib           # Pipeline serializado del modelo campeón
-│   └── metrics_comparison.csv      # Tabla comparativa de métricas reales
+│   ├── metrics_comparison.csv      # Tabla de la corrida del notebook
+│   ├── hiperparametros.csv         # Búsqueda sobre entrenamiento
+│   └── eleccion.txt                # Argumento escrito con esos números
 │
 ├── notebooks/
 │   └── proyecto_final_vuelos_us.ipynb # Notebook ejecutable con los 6 pasos oficiales
+│
+├── reports/
+│   ├── auditoria_mensual_cruda.csv # Conteo de los CSV crudos, mes a mes
+│   └── muestra_vs_mes.csv          # Vuelos operados vs filas tomadas de cada mes
 │
 └── src/
     ├── config.py                   # Rutas canónicas, periodo oficial y constantes
@@ -99,62 +105,96 @@ Proyecto-final-Machine-Learning/
     │   ├── build_features.py       # Ingeniería de variables temporales y de red
     │   └── transformers.py         # Transformadores Scikit-Learn (RareCategoryGrouper, Cyclic)
     ├── models/
-    │   ├── pipeline.py             # ColumnTransformer hermético y ensamble de Pipeline
-    │   ├── train.py                # Entrenamiento y validación temporal TimeSeriesSplit
-    │   └── evaluate.py             # Métricas (ROC-AUC, PR-AUC, F1, Matrices de Confusión)
+    │   ├── pipeline.py             # ColumnTransformer y mediana de duración por aerolínea
+    │   ├── experiment.py           # Comparación, umbral y búsqueda de hiperparámetros
+    │   ├── train.py                # Misma comparación desde la terminal
+    │   └── evaluate.py             # F1 del retraso, ROC-AUC, PR-AUC y matrices
     └── utils/
         └── logger.py               # Configuración de registro profesional
 ```
 
 ---
 
-## 🔬 6. Metodología de Validación y Modelado
+## 6. Limpieza que sí se ve en los crudos
 
-### Validación Temporal Estricta (Simulación del Mundo Real)
-Se prohíbe el uso de partición aleatoria ingenua. Los datos se ordenan cronológicamente:
-- **Entrenamiento (75% más antiguo):** Junio 2025 a Febrero 2026 (~45.000 vuelos).
-- **Prueba Independiente (25% más reciente):** Marzo a Mayo 2026 (~15.000 vuelos).
-- **Validación Cruzada:** `TimeSeriesSplit(n_splits=3)` sobre el conjunto de entrenamiento.
+La tabla de modelado toma el 1 % de los vuelos operados de cada mes, al azar y con semilla 42: **76.201 filas**. Julio aporta 6.747 y febrero 5.543, porque julio operó más vuelos. El detalle está en `reports/muestra_vs_mes.csv`. Esa tabla ya llega sin cancelados. El efecto real de la limpieza está en `reports/auditoria_mensual_cruda.csv`, calculado sobre los 12 CSV:
 
-### Familias de Modelos Comparadas:
-1. **Línea Base Trivial (*DummyClassifier*):** Predice siempre la clase mayoritaria (Puntual).
-2. **Regla Manual de Negocio:** Heurística de la industria que predice demora para vuelos vespertinos ($\ge 16:00$) que operan en los Top 10 Hubs saturados de EE.UU.
-3. **Regresión Logística Regularizada:** Modelo lineal con regularización $L_2$.
-4. **Árbol de Decisión:** Modelo interpretable basado en particiones ortogonales.
-5. **Random Forest Classifier:** Ensamble de bagging en paralelo.
-6. **HistGradientBoosting Classifier:** Ensamble de boosting secuencial.
+| Concepto | Filas |
+|---|---:|
+| Universo crudo | 7.786.702 |
+| Cancelados | 145.007 |
+| Desviados | 21.637 |
+| Sin `ARR_DEL15` | 166.645 |
+| Operados, con target | 7.620.057 |
+| Duplicados de la clave vuelo | 3 |
+| Duración programada vacía | 4 |
 
----
+Cancelados más desviados suman 166.644. Falta una fila, en 7,8 millones, que tiene el target vacío sin esas dos banderas. No se imputa: sin llegada al itinerario no hay etiqueta de puntualidad.
 
-## 📈 7. Resultados Cuantitativos Reales (Evaluación en Test Temporal)
-
-Los siguientes resultados proceden de la ejecución real sobre el conjunto de prueba independiente (15.000 vuelos del periodo Marzo–Mayo 2026, tasa base de demoras del 23.79%):
-
-| Modelo Evaluado | Accuracy | Precision (Retraso) | Recall (Retraso) | F1-Score (Retraso) | ROC-AUC | PR-AUC | CV ROC-AUC |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Regla Manual (Hubs + Tarde)** | 0.7177 | 0.3826 | **0.3034** | **0.3384** | — | — | — |
-| **Dummy (Línea Base)** | **0.7621** | 0.0000 | 0.0000 | 0.0000 | 0.5000 | 0.2379 | 0.5000 |
-| **Regresión Logística** | 0.7611 | 0.4643 | 0.0255 | 0.0483 | 0.6660 | 0.3591 | 0.6274 |
-| **Árbol de Decisión** | 0.7594 | 0.4225 | 0.0305 | 0.0570 | 0.6590 | 0.3477 | 0.6099 |
-| **Random Forest** | 0.7620 | 0.0000 | 0.0000 | 0.0000 | 0.6815 | **0.3804** | **0.6414** |
-| **Gradient Boosting** ⭐ | **0.7623** | **0.5189** | 0.0154 | 0.0299 | **0.6835** | 0.3782 | 0.6366 |
-
-### 💡 Análisis del Trade-Off y Calibración de Umbral
-- **La falacia del Accuracy:** El modelo *Dummy* obtiene 76.21% de Accuracy simplemente prediciendo que ningún vuelo llegará tarde, pero su utilidad operativa es nula (Recall = 0%).
-- **Calibración de Umbral al Prior Poblacional:** Dado que la tasa de demoras es del ~23%, el umbral de decisión por defecto de Scikit-Learn ($0.50$) es subóptimo. Al calibrar el umbral de decisión a **$0.25$**, el modelo **Gradient Boosting** alcanza:
-  - **Recall de retrasos:** **> 55%** (detecta más de la mitad de todos los retrasos antes del despegue).
-  - **Precision:** ~38%.
-  - **F1-Score:** **0.448**, superando ampliamente a la regla manual (0.338).
-
-### 🏆 Modelo Campeón Elegido: `Gradient Boosting`
-Se selecciona **Gradient Boosting** debido a que:
-1. Alcanza el mayor **ROC-AUC (0.6835)** en datos nunca antes vistos.
-2. Demuestra la menor discrepancia de generalización entre validación cruzada y test.
-3. Permite ajustar eficientemente el umbral de probabilidad para satisfacer las restricciones operativas de la aerolínea.
+La duración programada casi no falta. Aun así, en el entrenamiento se escondió el 20 % de `CRS_ELAPSED_TIME`. La mediana por aerolínea bajó el error absoluto de 52,78 a 46,84 minutos (11,2 % menos que la mediana global; la media global se equivoca 54,37). Esa imputación vive dentro del Pipeline y se ajusta solo con cada pliegue.
 
 ---
 
-## 🚀 8. Instrucciones de Instalación y Ejecución
+## 7. Validación y modelos
+
+Los vuelos se ordenan por `FL_DATE`. Un corte aleatorio entrenaría con 2026 para predecir 2025.
+
+- **Entrenamiento:** 57.150 vuelos, 1 de junio de 2025 al 4 de marzo de 2026. Retraso: 22,70 %.
+- **Prueba:** 19.051 vuelos, 4 de marzo al 31 de mayo de 2026. Retraso: 22,04 %. No elige el modelo ni el umbral.
+- **Validación:** `TimeSeriesSplit` de 3 pliegues dentro del entrenamiento.
+
+El corte es el último 25 % de las filas ya ordenadas por fecha. El 4 de marzo de 2026 queda partido: unos vuelos de ese día entrenan y otros se reservan para la prueba.
+
+El umbral de cada modelo se elige en el último pliegue, maximizando el F1 del retraso. Con `class_weight='balanced'`, el 0,50 de scikit-learn no es el punto de operación. La exactitud a 0,50 no es la métrica de la decisión: la línea base ya acierta el 77,96 % de la prueba prediciendo siempre puntual, con recall 0.
+
+Familias comparadas con los mismos datos y la misma validación cruzada:
+
+1. Línea base: siempre la clase mayoritaria.
+2. Regla manual: salida desde las 16:00 y origen o destino en un hub de la lista fija.
+3. Regresión logística.
+4. Árbol de decisión.
+5. Random Forest.
+6. Gradient boosting (`HistGradientBoosting`).
+7. XGBoost.
+
+KNN y SVM de kernel no entran: con decenas de miles de filas y aeropuertos en one-hot, cada predicción recorre el entrenamiento. La frontera lineal ya está en la logística. Una red neuronal no agrega una familia distinta del boosting en este problema.
+
+---
+
+## 8. Resultados de la corrida
+
+El modelo se elige por ROC-AUC de la validación cruzada temporal. Si otro queda a menos de 0,01, se prefiere el más simple. Las columnas de precisión, recall y F1 son el reporte de la prueba, con el umbral ya fijado.
+
+| Modelo | ROC-AUC validación | Umbral | Precisión | Recall | F1 retraso | ROC-AUC prueba |
+|---|---:|---:|---:|---:|---:|---:|
+| Regla manual | — | — | 0,3012 | 0,2608 | 0,2796 | — |
+| Línea base | 0,5000 | 0,50 | 0,0000 | 0,0000 | 0,0000 | 0,5000 |
+| **Regresión logística** | **0,6193** | **0,30** | **0,2721** | **0,8073** | **0,4070** | **0,6524** |
+| Árbol de decisión | 0,6107 | 0,40 | 0,2602 | 0,8244 | 0,3956 | 0,6207 |
+| Random Forest | 0,6259 | 0,40 | 0,2713 | 0,7880 | 0,4037 | 0,6399 |
+| Gradient boosting | 0,6273 | 0,40 | 0,2709 | 0,7923 | 0,4038 | 0,6374 |
+| XGBoost | 0,6285 | 0,40 | 0,2661 | 0,8271 | 0,4026 | 0,6374 |
+
+XGBoost tiene el mayor ROC-AUC de validación (0,6285). La logística queda en 0,6193. La diferencia es 0,0092, dentro de la banda de 0,01, y la logística es más simple. Esa diferencia también es menor que la desviación de los pliegues de la logística (0,0253). En la prueba, con el umbral ya fijado, el F1 de la logística es 0,4070. La prueba no se usó para elegir.
+
+La logística, en su umbral 0,30, encuentra el 81 % de los retrasos de la prueba. La precisión es 0,27: de cada cuatro alertas, una es un retraso. La regla manual tiene F1 0,2796. El modelo la supera en el punto de operación.
+
+### Hiperparámetros
+
+La búsqueda usa otro `TimeSeriesSplit` de 2 pliegues, solo sobre el entrenamiento, 4 combinaciones por modelo. Se ajustan el campeón y el de mayor ROC-AUC de validación.
+
+| Modelo | ROC-AUC base | ROC-AUC ajustado | Ganancia |
+|---|---:|---:|---:|
+| Regresión logística (`C` = 3,85) | 0,6030 | 0,6031 | 0,0001 |
+| XGBoost | 0,6120 | 0,6103 | −0,0017 |
+
+Hace falta una ganancia de al menos 0,005 para cambiar la configuración. No aparece. Se guarda la regresión logística base.
+
+El 0,6030 de la logística en esta tabla no es el 0,6193 de la tabla anterior. El primero sale de los 2 pliegues usados para ajustar hiperparámetros. El segundo sale de los 3 pliegues usados para elegir la familia.
+
+---
+
+## 9. Instalación y ejecución
 
 ### 1. Clonar el repositorio
 ```bash
@@ -181,28 +221,19 @@ pip install -e .
 # export KAGGLE_API_TOKEN="tu_token" o guárdalo en ~/.kaggle/access_token
 
 # Descarga los 12 meses y genera el dataset reproducible:
-python src/data/download_data.py --sample-per-month 5000
+python src/data/download_data.py --sample-fraction 0.01
 ```
 
-### 4. Entrenamiento y evaluación desde terminal
+### 4. La misma comparación desde la terminal
 ```bash
-python src/models/train.py --quick
+python src/models/train.py
 ```
 
-### 5. Ejecución en vivo para la exposición presencial
-Abre Jupyter Notebook y corre de principio a fin:
+`--quick` usa menos árboles. Los números del README salen de `python src/models/train.py`, con semilla 42. El notebook usa las mismas funciones.
+
+### 5. Notebook
 ```bash
 jupyter notebook notebooks/proyecto_final_vuelos_us.ipynb
 ```
-*Tiempo estimado de ejecución completa (Run All): **< 2 minutos**.*
 
----
-
-## 🎤 9. Guion de Exposición Presencial (Los 6 Pasos Oficiales)
-
-1. **¿ML? (Minuto 0–2):** Presentar el problema de los $30.000 millones de pérdidas por demoras aéreas. Explicar por qué ML supera a una regla fija debido al efecto cascada no lineal y presentar la **Regla Manual de Negocio** (salidas vespertinas en Hubs).
-2. **Datos (Minuto 2–4):** Mostrar la página de Kaggle / BTS abierta en el navegador. Explicar las 34 columnas oficiales, la licencia pública y la cobertura real de **12 meses completos (Junio 2025 a Mayo 2026)**.
-3. **Limpieza (Minuto 4–6):** Mostrar la tabla *Antes vs. Después*, justificando la exclusión de vuelos cancelados/desviados y demostrando cero nulos en el target.
-4. **Columnas (Minuto 6–9):** Enseñar la tabla de auditoría de **Data Leakage**. Demostrar por qué variables como `DEP_DELAY` o `TAXI_OUT` están prohibidas y cómo el `ColumnTransformer` encapsula todo el preprocesamiento dentro del Pipeline.
-5. **Modelos (Minuto 9–12):** Explicar la validación temporal estricta (*TimeSeriesSplit*). Correr el código en vivo frente al grupo con semilla fija.
-6. **Evaluación (Minuto 12–15):** Proyectar la tabla comparativa de métricas contra el baseline y la regla manual. Mostrar las curvas ROC/PR y defender la elección de **Gradient Boosting** con umbral calibrado al prior de demoras.
+La comparación de modelos tarda cerca de tres minutos. El notebook, con la auditoría y las gráficas, unos minutos más. La semilla es 42.

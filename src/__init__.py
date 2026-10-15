@@ -1,6 +1,6 @@
 """
-Paquete principal src para el Proyecto Final de Machine Learning:
-Predicción de Severidad de Siniestros Viales en Medellín.
+Paquete principal del proyecto final de Machine Learning:
+predicción de retraso de llegada en vuelos comerciales de Estados Unidos.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"

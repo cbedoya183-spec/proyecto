@@ -28,7 +28,8 @@ REPORTS_DIR = BASE_DIR / "reports"
 # ==============================================================================
 KAGGLE_DATASET_SLUG = "umerhafeezsiddiqui/2021-2026-us-flights"
 
-# Periodo de estudio oficial: Junio 2025 a Mayo 2026 (12 meses calendario completos)
+# Periodo disponible en los archivos locales: 1 de junio de 2025 al 31 de mayo de 2026.
+# Mayo de 2025 no está descargado. Estos 12 meses cubren un ciclo estacional completo.
 STUDY_PERIOD_FILES = [
     "Jun-2025.csv",
     "Jul-2025.csv",
@@ -53,8 +54,13 @@ SAMPLE_PARQUET_PATH = PROCESSED_DATA_DIR / "us_flights_sample_reproducible.parqu
 # PARÁMETROS GLOBALES DE MACHINE LEARNING Y REPRODUCIBILIDAD
 # ==============================================================================
 RANDOM_STATE = 42
-TEST_SIZE = 0.20
-CV_FOLDS = 5
+# Fracción aleatoria de los vuelos operados de cada mes. Conserva el peso del mes.
+SAMPLE_FRACTION = 0.01
+# Último tramo temporal, reservado para la prueba.
+TEST_FRACTION = 0.25
+# Pliegues de la validación cruzada temporal y de la búsqueda de hiperparámetros.
+TIME_SPLITS = 3
+TUNING_SPLITS = 2
 
 # ==============================================================================
 # DEFINICIÓN DEL TARGET Y ESQUEMA DE COLUMNAS

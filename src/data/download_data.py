@@ -1,35 +1,69 @@
 """
 download_data.py — Ingesta, descarga reproducible y muestreo de vuelos comerciales EE.UU. (2025–2026).
 
-Descarga los 13 archivos mensuales oficiales (Mayo 2025 a Mayo 2026) desde Kaggle
-(fuente primaria BTS / U.S. DOT) y genera un subconjunto representativo y reproducible
-estratificado por mes y aerolínea para permitir ejecución ágil y evaluación rigurosa.
+Descarga los 12 archivos mensuales disponibles (junio 2025 a mayo 2026) desde Kaggle
+(fuente primaria BTS / U.S. DOT) y toma, de cada mes, una fracción aleatoria de los
+vuelos operados. El mes con más tráfico aporta más filas. Semilla fija.
 
 Uso:
-    python src/data/download_data.py --sample-per-month 5000
+    python src/data/download_data.py --sample-fraction 0.01
     python src/data/download_data.py --download-all
 """
 
 import argparse
+import gc
 import os
 import sys
 from pathlib import Path
+
+import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import pandas as pd
-import numpy as np
 
 from src.config import (
+    ADMIN_COLS,
     KAGGLE_DATASET_SLUG,
+    LEAKAGE_COLS,
+    PRE_FLIGHT_FEATURES,
     STUDY_PERIOD_FILES,
     RAW_DATA_DIR,
     PROCESSED_DATA_DIR,
+    REPORTS_DIR,
     SAMPLE_DATA_PATH,
     SAMPLE_PARQUET_PATH,
+    SAMPLE_FRACTION,
     RANDOM_STATE,
+    TARGET_COLUMN,
+)
+
+# Columnas que el proyecto usa: itinerario, target, cancelación y las de fuga
+# que el notebook muestra antes de descartarlas. El CSV crudo trae muchas más.
+SAMPLE_COLUMNS = set(
+    PRE_FLIGHT_FEATURES
+    + LEAKAGE_COLS
+    + ADMIN_COLS
+    + [
+        "FL_DATE",
+        "YEAR",
+        "MONTH",
+        "DAY_OF_MONTH",
+        "DAY_OF_WEEK",
+        "CRS_DEP_TIME",
+        "CRS_ARR_TIME",
+        "CANCELLED",
+        "DIVERTED",
+        TARGET_COLUMN,
+        "ARR_DELAY",
+        "OP_UNIQUE_CARRIER",
+        "ORIGIN",
+        "DEST",
+        "DISTANCE",
+        "CRS_ELAPSED_TIME",
+    ]
 )
 from src.utils.logger import get_logger
 
@@ -83,20 +117,70 @@ def download_monthly_file(filename: str, api=None, force: bool = False) -> Path:
 
 
 def download_study_period_files(force: bool = False):
-    """Descarga todos los archivos correspondientes a los 13 meses del estudio."""
+    """Descarga los archivos del periodo de estudio (junio 2025 a mayo 2026)."""
     api = ensure_kaggle_authenticated()
-    logger.info(f"Descargando {len(STUDY_PERIOD_FILES)} meses del periodo (Mayo 2025 a Mayo 2026)...")
+    logger.info(f"Descargando {len(STUDY_PERIOD_FILES)} meses del periodo (junio 2025 a mayo 2026)...")
     for fname in STUDY_PERIOD_FILES:
         download_monthly_file(fname, api=api, force=force)
 
 
-def build_stratified_sample_dataset(sample_per_month: int = 5000) -> Path:
+def _completed_mask(chunk: pd.DataFrame) -> pd.Series:
+    mask = chunk["ARR_DEL15"].notna()
+    if "CANCELLED" in chunk.columns:
+        mask &= chunk["CANCELLED"] == 0
+    if "DIVERTED" in chunk.columns:
+        mask &= chunk["DIVERTED"] == 0
+    return mask
+
+
+def _sample_month_file(fpath: Path, sample_fraction: float) -> tuple[pd.DataFrame, int, float]:
     """
-    Crea un dataset unificado representativo y estratificado por mes y aerolínea
-    a partir de los archivos mensuales disponibles en data/raw.
+    Dos lecturas por bloques. No carga el mes entero: primero cuenta los
+    vuelos operados y luego se queda solo con las filas sorteadas.
+    """
+    reader_kwargs = dict(
+        usecols=lambda col: col in SAMPLE_COLUMNS,
+        chunksize=40_000,
+        low_memory=True,
+    )
+    n_operados = 0
+    delay_sum = 0.0
+    for chunk in pd.read_csv(fpath, **reader_kwargs):
+        done = chunk.loc[_completed_mask(chunk), "ARR_DEL15"]
+        n_operados += int(len(done))
+        delay_sum += float(done.sum())
+        del chunk, done
+    if n_operados == 0:
+        raise ValueError(f"No hay vuelos operados en {fpath.name}")
+
+    n_take = min(n_operados, max(1, int(round(n_operados * sample_fraction))))
+    chosen = set(np.random.RandomState(RANDOM_STATE).choice(n_operados, size=n_take, replace=False).tolist())
+    kept = []
+    cursor = 0
+    for chunk in pd.read_csv(fpath, **reader_kwargs):
+        done = chunk.loc[_completed_mask(chunk)]
+        if done.empty:
+            continue
+        positions = np.arange(cursor, cursor + len(done))
+        pick = done.iloc[[i for i, pos in enumerate(positions) if pos in chosen]]
+        if len(pick):
+            kept.append(pick)
+        cursor += len(done)
+        del chunk, done, pick
+    sample = pd.concat(kept, ignore_index=True)
+    return sample, n_operados, delay_sum / n_operados
+
+
+def build_stratified_sample_dataset(sample_fraction: float = SAMPLE_FRACTION) -> Path:
+    """
+    De cada mes toma una fracción aleatoria de los vuelos operados.
+    Un mes con más vuelos aporta más filas. La semilla es fija.
+    No estratifica por aerolínea: dentro del mes, cada vuelo operado
+    tiene la misma probabilidad.
     """
     RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
     PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     available_files = [f for f in STUDY_PERIOD_FILES if (RAW_DATA_DIR / f).exists()]
     if not available_files:
@@ -105,57 +189,58 @@ def build_stratified_sample_dataset(sample_per_month: int = 5000) -> Path:
         available_files = [f for f in STUDY_PERIOD_FILES if (RAW_DATA_DIR / f).exists()]
 
     logger.info(
-        f"Generando dataset reproducible con {sample_per_month} registros por mes "
-        f"a través de {len(available_files)} meses disponibles..."
+        f"Muestra del {sample_fraction:.1%} de los vuelos operados de cada mes "
+        f"({len(available_files)} archivos)..."
     )
 
     monthly_dfs = []
-    rng = np.random.RandomState(RANDOM_STATE)
+    coverage_rows = []
 
     for fname in available_files:
         fpath = RAW_DATA_DIR / fname
         logger.info(f"Procesando muestra de {fname}...")
-        
-        # Leer columnas relevantes directamente para ahorrar memoria
-        df_month = pd.read_csv(fpath, low_memory=False)
-
-        # Filtrar vuelos completados (excluir cancelados y desviados para puntualidad CRS)
-        if "CANCELLED" in df_month.columns and "DIVERTED" in df_month.columns:
-            completed = df_month[(df_month["CANCELLED"] == 0) & (df_month["DIVERTED"] == 0)].copy()
-        else:
-            completed = df_month.copy()
-
-        # Filtrar registros con target válido
-        completed = completed.dropna(subset=["ARR_DEL15"])
-
-        # Muestreo aleatorio uniforme con semilla fija por mes
-        n_take = min(len(completed), sample_per_month)
-        sample_month = completed.sample(n=n_take, random_state=RANDOM_STATE) if n_take < len(completed) else completed
-
+        sample_month, n_operados, tasa_operados = _sample_month_file(fpath, sample_fraction)
         monthly_dfs.append(sample_month)
-        logger.info(f"  -> {len(sample_month)} registros seleccionados de {fname} (Aerolíneas: {sample_month['OP_UNIQUE_CARRIER'].nunique()})")
+        coverage_rows.append(
+            {
+                "archivo": fname,
+                "operados": n_operados,
+                "muestra": len(sample_month),
+                "fraccion": round(len(sample_month) / n_operados, 4) if n_operados else None,
+                "tasa_retraso_operados": round(tasa_operados, 4),
+                "tasa_retraso_muestra": round(float(sample_month["ARR_DEL15"].mean()), 4),
+            }
+        )
+        logger.info(f"  -> {len(sample_month):,} de {n_operados:,} vuelos operados en {fname}")
+        gc.collect()
 
     unified_df = pd.concat(monthly_dfs, ignore_index=True)
     logger.info(f"Dataset total unificado: {len(unified_df):,} filas × {len(unified_df.columns)} columnas.")
 
-    # Guardar en CSV y Parquet para máxima interoperabilidad y velocidad
     unified_df.to_csv(SAMPLE_DATA_PATH, index=False)
     unified_df.to_parquet(SAMPLE_PARQUET_PATH, index=False)
-    logger.info(f"Dataset guardado en:")
-    logger.info(f"  - CSV:     {SAMPLE_DATA_PATH}")
-    logger.info(f"  - Parquet: {SAMPLE_PARQUET_PATH}")
-
+    coverage = pd.DataFrame(coverage_rows)
+    coverage_path = REPORTS_DIR / "muestra_vs_mes.csv"
+    coverage.to_csv(coverage_path, index=False)
+    logger.info(f"Comparación muestra vs mes guardada en {coverage_path}")
+    logger.info(f"CSV: {SAMPLE_DATA_PATH}")
+    logger.info(f"Parquet: {SAMPLE_PARQUET_PATH}")
     return SAMPLE_PARQUET_PATH
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gestor de datos de vuelos US 2025-2026")
-    parser.add_argument("--download-all", action="store_true", help="Descargar los 13 meses completos")
-    parser.add_argument("--sample-per-month", type=int, default=5000, help="Registros por mes para la muestra")
+    parser.add_argument("--download-all", action="store_true", help="Descargar los 12 meses del periodo")
+    parser.add_argument(
+        "--sample-fraction",
+        type=float,
+        default=SAMPLE_FRACTION,
+        help="Fracción de vuelos operados que se toma de cada mes",
+    )
     parser.add_argument("--force", action="store_true", help="Forzar re-descarga")
     args = parser.parse_args()
 
     if args.download_all:
         download_study_period_files(force=args.force)
 
-    build_stratified_sample_dataset(sample_per_month=args.sample_per_month)
+    build_stratified_sample_dataset(sample_fraction=args.sample_fraction)

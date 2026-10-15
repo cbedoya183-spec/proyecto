@@ -13,13 +13,14 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from typing import List, Optional
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-from src.features.transformers import RareCategoryGrouper
+from src.features.transformers import GroupMedianImputer, RareCategoryGrouper
 from src.utils.logger import get_logger
 
 logger = get_logger("pipeline")
@@ -38,6 +39,10 @@ DEFAULT_NUMERICAL_FEATURES = [
     "ORIGIN_IS_HUB",
     "DEST_IS_HUB",
     "IS_HUB_TO_HUB",
+    "CRS_DEP_SIN",
+    "CRS_DEP_COS",
+    "MONTH_SIN",
+    "MONTH_COS",
 ]
 
 DEFAULT_CATEGORICAL_FEATURES = [
@@ -80,7 +85,7 @@ def build_preprocessor(
         steps=[
             ("imputer", SimpleImputer(strategy="constant", fill_value="DESCONOCIDO")),
             ("grouper", RareCategoryGrouper(top_n=top_categories, fill_value="OTRO")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+            ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=True)),
         ]
     )
 
@@ -90,6 +95,8 @@ def build_preprocessor(
             ("cat", cat_pipeline, categorical_cols),
         ],
         remainder="drop",
+        sparse_threshold=0.3,
+        n_jobs=1,
     )
 
     logger.info(
@@ -97,6 +104,16 @@ def build_preprocessor(
         f"y {len(categorical_cols)} variables categóricas."
     )
     return preprocessor
+
+
+class ToDense(BaseEstimator, TransformerMixin):
+    """HistGradientBoosting no acepta la matriz dispersa del one-hot."""
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return X.toarray() if hasattr(X, "toarray") else X
 
 
 def build_full_pipeline(
@@ -112,10 +129,11 @@ def build_full_pipeline(
         categorical_cols=categorical_cols,
     )
 
-    pipeline = Pipeline(
-        steps=[
-            ("preprocessor", preprocessor),
-            ("model", model),
-        ]
-    )
-    return pipeline
+    steps = [
+        ("duracion_por_aerolinea", GroupMedianImputer()),
+        ("preprocessor", preprocessor),
+    ]
+    if isinstance(model, HistGradientBoostingClassifier):
+        steps.append(("denso", ToDense()))
+    steps.append(("model", model))
+    return Pipeline(steps=steps)

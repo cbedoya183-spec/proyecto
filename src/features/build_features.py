@@ -97,13 +97,19 @@ def extract_flight_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Extraer horas enteras de los horarios programados en formato HHMM (CRS_DEP_TIME y CRS_ARR_TIME)
     def hhmm_to_hour(val):
+        """Convierte HHMM programado a hora 0-23. No imputa: el Pipeline lo hace en train."""
         if pd.isna(val):
-            return 12  # Mediodía como imputación razonable
+            return np.nan
         try:
-            val_int = int(val)
-            return min(23, max(0, val_int // 100))
+            val_int = int(float(val))
         except (ValueError, TypeError):
-            return 12
+            return np.nan
+        if val_int == 2400:
+            return 0
+        hour = val_int // 100
+        if hour < 0 or hour > 23:
+            return np.nan
+        return hour
 
     df["CRS_DEP_HOUR"] = df["CRS_DEP_TIME"].apply(hhmm_to_hour)
     df["CRS_ARR_HOUR"] = df["CRS_ARR_TIME"].apply(hhmm_to_hour)
@@ -119,7 +125,18 @@ def extract_flight_temporal_features(df: pd.DataFrame) -> pd.DataFrame:
         else:
             return "Noche_18_23"
 
-    df["DEP_TIME_BLOCK"] = df["CRS_DEP_HOUR"].apply(categorizar_bloque_salida)
+    df["DEP_TIME_BLOCK"] = df["CRS_DEP_HOUR"].apply(
+        lambda hora: np.nan if pd.isna(hora) else categorizar_bloque_salida(hora)
+    )
+
+    # Codificación cíclica: la hora 23 está junto a la 0, y diciembre junto a enero.
+    # Es una transformación determinista del itinerario, no se aprende con la etiqueta.
+    hour = df["CRS_DEP_HOUR"].astype(float)
+    month = df["MONTH"].astype(float)
+    df["CRS_DEP_SIN"] = np.sin(2 * np.pi * hour / 24.0)
+    df["CRS_DEP_COS"] = np.cos(2 * np.pi * hour / 24.0)
+    df["MONTH_SIN"] = np.sin(2 * np.pi * month / 12.0)
+    df["MONTH_COS"] = np.cos(2 * np.pi * month / 12.0)
 
     return df
 
@@ -162,7 +179,8 @@ def isolate_preflight_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # Columnas prohibidas que deben removerse
     cols_to_drop = [c for c in (LEAKAGE_COLS + ADMIN_COLS) if c in df.columns]
-    df = df.drop(columns=cols_to_drop, errors="ignore")
+    empty_cols = [c for c in df.columns if df[c].isna().all()]
+    df = df.drop(columns=cols_to_drop + empty_cols, errors="ignore")
 
     logger.info(f"Columnas tras eliminación estricta de leakage: {len(df.columns)}")
     return df

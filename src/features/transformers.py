@@ -46,11 +46,13 @@ class RareCategoryGrouper(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        X_df = pd.DataFrame(X).copy()
+        X_df = pd.DataFrame(X)
+        grouped = {}
         for col in X_df.columns:
             frequent = self.frequent_categories_.get(col, set())
-            X_df[col] = X_df[col].apply(lambda val: val if val in frequent else self.fill_value)
-        return X_df.values
+            series = X_df[col].astype("string")
+            grouped[col] = np.where(series.isin(frequent), series, self.fill_value)
+        return pd.DataFrame(grouped).to_numpy()
 
 
 class CyclicFeaturesTransformer(BaseEstimator, TransformerMixin):
@@ -70,3 +72,32 @@ class CyclicFeaturesTransformer(BaseEstimator, TransformerMixin):
         sin_comp = np.sin(2 * np.pi * X_arr / self.period)
         cos_comp = np.cos(2 * np.pi * X_arr / self.period)
         return np.hstack([sin_comp, cos_comp])
+
+
+class GroupMedianImputer(BaseEstimator, TransformerMixin):
+    """
+    Imputa una columna numérica con la mediana de su grupo, aprendida en fit.
+
+    Se usa para la duración programada según la aerolínea: en el entrenamiento,
+    esconder valores conocidos dio menos error que la mediana global. Una
+    aerolínea nueva en la prueba cae a la mediana global del entrenamiento.
+    """
+
+    def __init__(self, value_col: str = "CRS_ELAPSED_TIME", group_col: str = "OP_UNIQUE_CARRIER"):
+        self.value_col = value_col
+        self.group_col = group_col
+
+    def fit(self, X, y=None):
+        frame = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        self.group_medians_ = frame.groupby(self.group_col)[self.value_col].median()
+        self.global_median_ = float(frame[self.value_col].median())
+        return self
+
+    def transform(self, X):
+        frame = X.copy(deep=False) if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        values = pd.to_numeric(frame[self.value_col], errors="coerce").to_numpy(dtype=float, copy=True)
+        mapped = frame[self.group_col].map(self.group_medians_).fillna(self.global_median_).to_numpy()
+        missing = np.isnan(values)
+        values[missing] = mapped[missing]
+        frame[self.value_col] = values
+        return frame

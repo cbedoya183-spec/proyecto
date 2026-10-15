@@ -46,6 +46,11 @@ def load_flight_data(use_parquet: bool = True) -> pd.DataFrame:
         build_stratified_sample_dataset()
         df = pd.read_parquet(SAMPLE_PARQUET_PATH)
 
+    empty_cols = [c for c in df.columns if df[c].isna().all()]
+    if empty_cols:
+        df = df.drop(columns=empty_cols)
+        logger.info(f"Se descartaron columnas vacías: {empty_cols}")
+
     if TARGET_COLUMN not in df.columns:
         logger.warning(f"La columna objetivo '{TARGET_COLUMN}' no está presente en los datos.")
 
