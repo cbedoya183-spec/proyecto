@@ -8,16 +8,16 @@
   "pliegues": 3,
   "corte_temporal_prueba": "2026-04-07",
   "modelo_elegido": "HistGradientBoosting",
-  "umbral": 0.3394,
+  "umbral": 0.2951,
   "regla_a_mano_hora": 12,
-  "AUC_cv_elegido": 0.798,
-  "AUC_prueba_elegido": 0.8157,
+  "AUC_cv_elegido": 0.795,
+  "AUC_prueba_elegido": 0.8124,
   "AUC_prueba_regla": 0.6004,
-  "F1_prueba_elegido": 0.5998,
+  "F1_prueba_elegido": 0.5898,
   "F1_prueba_regla": 0.3833,
   "top3_columnas": {
-    "prev_disponible": 0.1602,
-    "ret_prev_llegada": 0.1127,
-    "holgura_prog": 0.0546
+    "prev_disponible": 0.1191,
+    "ret_prev_llegada": 0.1077,
+    "holgura_prog": 0.0692
   }
 }

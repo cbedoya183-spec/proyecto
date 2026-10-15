@@ -1,88 +1,85 @@
-# Retrasos de vuelos en EE. UU. · Taller de Machine Learning
+# Retrasos de vuelos en EE. UU. · Proyecto final de Machine Learning
 
 Universidad EIA · Machine Learning · Proyecto final (30 % de la nota) · Exposición presencial, sesión 9
 
-**Equipo:** _TODO nombres (2 o 4 integrantes)_
+**Equipo:** _completar nombres (2 o 4 integrantes)_
 
 ## El problema
 
-Dado un vuelo programado, ¿llegará con **15 minutos o más de retraso**? (clasificación binaria).
-La predicción se hace **antes del despegue**: solo se usa lo que ya se sabe en ese momento (itinerario, ruta, fecha, congestión
-del aeropuerto). Todo lo que se conoce después del despegue es una **fuga** y está excluido.
+Dado un vuelo programado, ¿llegará con **15 minutos o más de retraso**? Es una clasificación binaria y la
+predicción se emite **a la hora de salida programada**: solo puede usar lo que ya se sabe en ese instante
+(itinerario, ruta, calendario, congestión programada del aeropuerto y cómo venía la aeronave en su tramo
+anterior). Todo lo que se mide durante o después del vuelo es **fuga** y está excluido.
 
-- **Datos:** [2021-2026 US Flights](https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights) (Kaggle). Ver `datos/LEEME.md`.
-- **Ventana del taller:** mayo 2025 – mayo 2026 (13 meses). Los archivos se unen en una sola tabla y se recorta esa ventana.
-- **Segunda fuente:** [OurAirports](https://ourairports.com/data/) (latitud, longitud y elevación de cada aeropuerto) y los festivos federales de EE. UU.
+- **Datos:** [2021-2026 US Flights](https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights)
+  (Kaggle, a partir del reporte *On-Time Performance* del Bureau of Transportation Statistics, US DOT).
+- **Periodo:** junio 2025 – mayo 2026 (12 meses calendario, un ciclo estacional completo).
+- **Etiqueta:** `ARR_DEL15` (definición oficial del DOT: un vuelo está retrasado desde los 15 minutos).
 
 ## Cómo correrlo
 
 ```bash
-git clone <URL-del-repo> && cd taller-ml-vuelos
-python -m venv .venv && source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt && pip install -e .
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-python scripts/00_descargar.py        # Kaggle (kagglehub) + aeropuertos → datos/crudos y datos/externos
-python scripts/01_construir_tabla.py  # une archivos, recorta fechas, arma la tabla → datos/procesados y datos/muestra
-python scripts/02_entrenar_todo.py --rapido   # de principio a fin, con la muestra pequeña (el modo de la exposición)
-python scripts/02_entrenar_todo.py            # comparación completa (N_MODELOS filas)
+# 1) Descargar los CSV mensuales de Kaggle y dejarlos en datos/crudos/
+#    (Jun-2025.csv … May-2026.csv). No se versionan: pesan varios GB.
+
+# 2) Abrir el notebook y correrlo de principio a fin
+jupyter lab notebooks/proyecto_final_vuelos.ipynb      # Kernel -> Restart & Run All
 ```
 
-La muestra (`datos/muestra/vuelos_muestra.parquet`) la genera `01_construir_tabla.py` con los datos reales; **hay que hacer `git add` de ese archivo**.
-Con ella, cualquiera que clone el repositorio puede correr los pasos 5 y 6 **sin descargar nada**: `python scripts/02_entrenar_todo.py --rapido`. Semilla fija (`SEMILLA = 42`): los números coinciden con las láminas.
+En `src/config.py`, `MODO_RAPIDO = True` es el modo de la exposición (unos minutos) y `MODO_RAPIDO = False`
+reproduce los números del informe. La semilla está fija en 42, así que los números coinciden con los de las
+láminas. La primera corrida deja una caché en `datos/procesados/*.parquet`; las siguientes arrancan de ahí.
 
 ## Estructura
 
 ```
-├── README.md
-├── requirements.txt · pyproject.toml · .gitignore
-├── datos/
-│   ├── LEEME.md            fuente, licencia y cómo descargar (lo que se muestra en la exposición)
-│   ├── crudos/             archivos de Kaggle tal cual (NO se versiona: pesa demasiado)
-│   ├── externos/           tabla de aeropuertos
-│   ├── procesados/         tabla principal armada por nosotros (NO se versiona)
-│   └── muestra/            muestra pequeña de la tabla principal (SÍ se versiona, sirve para correr en vivo)
-├── notebooks/              un notebook por bloque de la ruta de los 6 pasos
-│   ├── 01_problema_y_datos.ipynb       pasos 1-2  ¿ML? y datos
-│   ├── 02_limpieza_y_columnas.ipynb    pasos 3-4  faltantes, fugas, columnas
-│   ├── 03_modelos.ipynb                paso 5     varios modelos, misma validación
-│   └── 04_evaluacion.ipynb             paso 6     métricas, elección, prueba final
-├── src/vuelos/             el código reutilizable (los notebooks y los scripts lo importan)
-│   ├── config.py           ventana de fechas, semilla, nombres de columnas: TODO se ajusta aquí
-│   ├── descarga.py         paso 2
-│   ├── datos.py            pasos 2-3: unir archivos, ventana, tabla principal, muestra
-│   ├── limpieza.py         paso 3: imputación (dentro del Pipeline) y comparación de métodos
-│   ├── columnas.py         paso 4: columnas nuevas y preprocesamiento (dentro del Pipeline)
-│   ├── modelos.py          paso 5: los modelos y el Pipeline
-│   └── evaluacion.py       paso 6: métricas, regla a mano, umbral, prueba final
-├── scripts/                lo que se ejecuta desde la terminal
-├── tests/                  prueba de humo con datos inventados (python -m pytest)
-├── docs/
-│   ├── decisiones.md       bitácora: cada decisión con su justificación
-│   └── checklist_rubrica.md
-├── modelos_guardados/      modelo_final.joblib (pequeño, SÍ se versiona)
-└── resultados/             tabla_modelos.csv y figuras
+├── README.md · requirements.txt · .gitignore
+├── src/                   todo el código; el notebook solo cuenta la historia
+│   ├── config.py          periodo, semilla, tamaños, listas de columnas: TODO se ajusta aquí
+│   ├── datos.py           pasos 2-3: cargar los CSV, auditar y limpiar
+│   ├── columnas.py        paso 4: columnas pre-vuelo, control de fugas, experimento de faltantes
+│   ├── modelos.py         paso 5: regla a mano, catálogo de modelos, validación temporal
+│   └── evaluacion.py      paso 6: métricas, umbral, prueba final, gráficas
+├── notebooks/
+│   └── proyecto_final_vuelos.ipynb     el único notebook: los 6 pasos, en orden
+├── datos/crudos/          CSV de Kaggle tal cual (NO se versionan)
+├── datos/procesados/      caché en parquet (NO se versiona)
+├── modelos/               modelo_elegido.joblib
+├── resultados/            tablas CSV y figuras PNG que produce el notebook
+└── docs/                  ficha de datos y bitácora de decisiones
 ```
 
 ## La ruta de los 6 pasos y dónde vive cada uno
 
-| Paso | Qué se muestra | Código | Notebook |
-|---|---|---|---|
-| 1 · ¿ML? | Regla a mano como punto de comparación | `evaluacion.regla_a_mano` | 01 |
-| 2 · Datos | Página de Kaggle, descarga, filas/columnas, etiqueta | `descarga.py`, `datos.cargar_ventana` | 01 |
-| 3 · Limpieza | Faltantes, duplicados, fugas | `limpieza.py`, `datos.construir_tabla` | 02 |
-| 4 · Columnas | Tabla antes/después, columnas creadas y descartadas | `columnas.py` | 02 |
-| 5 · Modelos | Varios modelos, misma validación cruzada, dentro del Pipeline | `modelos.py` | 03 |
-| 6 · Evaluación | Tabla con todos + línea base + regla a mano; elección argumentada | `evaluacion.py` | 04 |
+| Paso | Qué se muestra | Código |
+|---|---|---|
+| 1 · ¿ML? | Las cinco preguntas y la regla a mano como punto de comparación | `modelos.ReglaManual`, `modelos.calibrar_regla` |
+| 2 · Datos | Página de Kaggle, licencia, cobertura mensual, qué es una fila | `datos.cargar`, `datos.cobertura_mensual` |
+| 3 · Limpieza | Nulos, cancelados, duplicados, formatos, atípicos, tabla antes/después | `datos.limpiar`, `datos.foto` |
+| 4 · Columnas | Columnas creadas, tabla de decisiones, faltantes, demostración de fuga | `columnas.py`, `evaluacion.demostrar_fuga` |
+| 5 · Modelos | Ocho modelos, los mismos pliegues, preprocesamiento dentro del Pipeline | `modelos.comparar_modelos` |
+| 6 · Evaluación | AUC, PR-AUC, F1, recall; elección argumentada; prueba final | `modelos.elegir_modelo`, `evaluacion.py` |
 
-## Decisiones de diseño que conviene saber
+## Decisiones de diseño que conviene poder defender
 
-- **Fugas.** `retraso_salida`, `retraso_llegada`, `cancelado` y `desviado` se conocen después del evento. `preparar_xy` aborta si alguna
-  entra como columna de entrada. El notebook 02 muestra el AUC con y sin fuga.
-- **Etiqueta desbalanceada** (~20 % de retrasos). La línea base «siempre a tiempo» ya acierta ~80 %: la exactitud engaña. Se compara con **AUC**
-  y el umbral de decisión se elige con la validación cruzada del entrenamiento (`evaluacion.umbral_optimo`), nunca con la prueba.
-- **Congestión del aeropuerto** (`vuelos_origen_hora`, `vuelos_origen_dia`): se cuenta con todos los vuelos programados y **antes** de muestrear.
-- **Muestreo.** La tabla completa tiene millones de filas: se explora completa, pero los modelos se comparan con `N_MODELOS` filas
-  (estratificadas) y la exposición corre con `N_RAPIDO`. Ajustar en `config.py`.
-- **Modelos.** Solo los vistos hasta la sesión 5 (línea base, logística, KNN, árbol, random forest, gradient boosting).
-  XGBoost, SVM y red neuronal están listos en `modelos.modelos_extension()`: se activan con `INCLUIR_S7_S8 = True`.
-- **Tamaño.** GitHub rechaza archivos de más de 100 MB: los datos crudos y procesados no se suben; se entregan con el enlace de descarga.
+- **Fugas.** `DEP_DELAY`, `ARR_DELAY`, `TAXI_*`, `WHEELS_*` y las cinco columnas de causas del retraso se
+  conocen después del evento. A `X` solo pasa una lista explícita de columnas (`config.NUMERICAS` y
+  `config.CATEGORICAS`), y un `assert` hace fallar el notebook si una prohibida se cuela. El notebook muestra
+  el AUC **con y sin** fuga para que se vea la diferencia.
+- **Cancelados y desviados.** No tienen etiqueta y **no se imputan**: taparlos con la mediana inventa una
+  etiqueta falsa. Se marcan y se filtran al final del paso 4, porque sus horarios programados sí cuentan para
+  la congestión y la rotación.
+- **Etiqueta desbalanceada** (~20 % de retrasos). La línea base «siempre a tiempo» ya acierta ~80 %: la
+  exactitud engaña. La métrica principal es el AUC, y el umbral de decisión se elige con la validación del
+  entrenamiento, nunca con la prueba.
+- **Validación temporal.** `TimeSeriesSplit` dentro del entrenamiento y el último 15 % del calendario como
+  prueba final, tocada una sola vez. Un K-fold aleatorio entrenaría con el futuro.
+- **Elección del modelo.** Entre los que quedan dentro de una desviación típica del mejor AUC, gana el más
+  simple. Un empate estadístico se rompe por interpretabilidad y costo, no por el tercer decimal.
+- **Muestreo.** La tabla completa tiene millones de filas: se explora entera, pero los modelos se comparan con
+  `N_CV` filas y la exposición corre con el modo rápido. Se ajusta en `src/config.py`.
+- **Tamaño.** GitHub rechaza archivos de más de 100 MB: los datos crudos y la caché no se suben, se entregan
+  con el enlace de descarga.

@@ -1,1 +1,0 @@
-Aquí se guardan las gráficas (.png) que genera el notebook.

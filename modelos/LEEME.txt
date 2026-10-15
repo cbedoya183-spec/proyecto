@@ -1,7 +1,0 @@
-El notebook guarda aquí modelo_elegido.joblib (modelo + umbral + columnas + semilla).
-Para usarlo sin reentrenar:
-    import joblib
-    paquete = joblib.load("modelos/modelo_elegido.joblib")
-    modelo, umbral = paquete["modelo"], paquete["umbral"]
-    # X debe tener las columnas paquete["NUM"] + paquete["CAT"] (las categóricas como texto)
-    retrasado = modelo.predict_proba(X)[:, 1] >= umbral
