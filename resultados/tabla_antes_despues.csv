@@ -1,0 +1,11 @@
+,ANTES,DESPUÉS,cambio
+filas,15573404.0,7786684.0,-7786720.0
+columnas,19.0,20.0,1.0
+memoria (GB),1.33,0.67,-0.66
+duplicados,7786702.0,0.0,-7786702.0
+cancelados,290014.0,145002.0,-145012.0
+desviados,43274.0,21626.0,-21648.0
+% nulos CRS_ELAPSED_TIME,0.0,0.0,0.0
+% nulos ARR_DELAY,2.14,2.14,0.0
+% nulos ARR_DEL15,2.14,2.14,0.0
+% nulos TAIL_NUM,0.3,0.3,0.0

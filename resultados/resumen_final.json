@@ -1,0 +1,23 @@
+{
+  "problema": "Retraso de llegada >= 15 min, predicho a la hora de salida programada",
+  "periodo": "2025-06 a 2026-05",
+  "filas_tabla_modelado": 7620055,
+  "tasa_retraso": 0.2244,
+  "modo_rapido": true,
+  "semilla": 42,
+  "pliegues": 3,
+  "corte_temporal_prueba": "2026-04-07",
+  "modelo_elegido": "HistGradientBoosting",
+  "umbral": 0.3394,
+  "regla_a_mano_hora": 12,
+  "AUC_cv_elegido": 0.798,
+  "AUC_prueba_elegido": 0.8157,
+  "AUC_prueba_regla": 0.6004,
+  "F1_prueba_elegido": 0.5998,
+  "F1_prueba_regla": 0.3833,
+  "top3_columnas": {
+    "prev_disponible": 0.1602,
+    "ret_prev_llegada": 0.1127,
+    "holgura_prog": 0.0546
+  }
+}
