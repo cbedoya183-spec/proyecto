@@ -1,0 +1,19 @@
+columna original,decisión,en qué se convierte
+YEAR / MONTH / DAY_OF_MONTH / FL_DATE,se transforma,fecha · dia_semana · dias_a_festivo
+OP_UNIQUE_CARRIER,ENTRA (categórica),codificación por objetivo dentro del Pipeline
+ORIGIN / DEST,ENTRAN (categóricas),codificación por objetivo dentro del Pipeline
+CRS_DEP_TIME,se transforma,hora_sal · hora_sal_dec
+CRS_ARR_TIME,se transforma,hora_lleg · desfase horario
+CRS_ELAPSED_TIME / DISTANCE,ENTRAN (numéricas),imputación y escalado dentro del Pipeline
+TAIL_NUM,"se usa, no entra",ret_prev_llegada · holgura_prog · tramo_del_dia
+OP_CARRIER_FL_NUM,DESCARTADA · identificador,solo sirve para detectar duplicados
+ARR_DEL15,ES LA ETIQUETA,retraso15
+ARR_DELAY,DESCARTADA · fuga (se mide durante o después del vuelo),el del tramo ANTERIOR sí se usa: ret_prev_llegada
+DEP_DELAY / DEP_TIME / DEP_DEL15,DESCARTADA · fuga (se mide durante o después del vuelo),DEP_DELAY se conserva solo para la demostración
+TAXI_* / WHEELS_* / ARR_TIME / AIR_TIME / ACTUAL_ELAPSED_TIME,DESCARTADA · fuga (se mide durante o después del vuelo),no se leen de los CSV
+CARRIER_ / WEATHER_ / NAS_ / SECURITY_ / LATE_AIRCRAFT_DELAY,DESCARTADA · fuga (se mide durante o después del vuelo) y > 50 % nulos,son la CAUSA del retraso: solo existen si ya hubo retraso
+CANCELLED / DIVERTED,"filtro, no entran",marcan los vuelos sin etiqueta
+(nueva) vuelos_origen_hora / vuelos_destino_hora,ENTRAN,congestión programada del aeropuerto
+(nueva) tramo_del_dia / holgura_prog,ENTRAN,rotación de la aeronave
+(nueva) ret_prev_llegada / prev_disponible,ENTRAN,propagación del retraso + bandera de faltante
+(nueva) dias_a_festivo,ENTRA,las vísperas de festivo saturan los aeropuertos

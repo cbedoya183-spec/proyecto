@@ -1,87 +1,104 @@
-# 📚 Diccionario de Datos — Retrasos de Vuelos Comerciales en EE.UU. (2025–2026)
+# 📚 Diccionario de datos — Retrasos de vuelos comerciales de EE. UU. (2025–2026)
 
-**Fuente Primaria:** *Bureau of Transportation Statistics (BTS), U.S. Department of Transportation (DOT)*  
-**Sistema:** *Reporting Carrier On-Time Performance*  
-**Catálogo Kaggle:** [2021-2026 US Flights](https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights)  
-**Licencia:** Obra del Gobierno Federal de EE.UU. (*U.S. Government Work*) / Dominio Público
+**Fuente primaria:** *Bureau of Transportation Statistics (BTS), U.S. Department of Transportation (DOT)*
+**Sistema:** *Reporting Carrier On-Time Performance*
+**Catálogo Kaggle:** [2021-2026 US Flights](https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights)
+**Licencia:** *U.S. Government Work* (dominio público)
 
 ---
 
-## 1. Variable Objetivo (Target)
+## 1 · Variable objetivo
 
-| Variable | Tipo | Descripción | Valores posibles | Rol en el Proyecto |
+| Variable | Tipo | Descripción | Valores | Rol |
 |---|---|---|---|---|
-| `ARR_DEL15` | Binaria (Entero) | Indicador oficial regulatorio de la FAA y el DOT de retraso en llegada $\ge 15$ minutos. | `0` = Puntual o adelantado<br>`1` = Retraso significativo ($\ge 15$ min) | **Target Principal de Clasificación** |
-| `ARR_DELAY` | Flotante (Continuo)| Diferencia en minutos entre la hora de llegada real y la programada CRS. | $(-\infty, +\infty)$ minutos | **Target Continuo de Referencia** (usado para validar umbral) |
+| `ARR_DEL15` | Binaria (int) | Retraso en llegada ≥ 15 minutos (definición oficial FAA/DOT). | `0` = puntual · `1` = retrasado | **Target de la clasificación** |
+| `retraso15` | Binaria (int) | Alias interno de `ARR_DEL15` que vive en `cfg.OBJETIVO`. | Mismo que arriba | Nombre único que recibe el Pipeline |
+| `ARR_DELAY` | Flotante | Diferencia en minutos entre la hora real de llegada y la programada. | continuo | **No se usa como X**: solo como referencia para `ret_prev_llegada` del siguiente tramo |
 
 ---
 
-## 2. Variables Predictoras Válidas en Pre-Vuelo (Itinerario CRS)
+## 2 · Columnas que SÍ entran al modelo
 
-Estas columnas están disponibles **antes del vuelo** (fase de programación/itinerario) y constituyen las características legítimas para el modelado:
+11 numéricas + 4 categóricas. Todas se conocen a la hora de salida programada.
 
-| Columna | Tipo | Descripción | Tratamiento en Pipeline |
-|---|---|---|---|
-| `MONTH` | Entero (1–12) | Mes del año programado del vuelo. | Codificación de estacionalidad (invierno, verano, festividades). |
-| `DAY_OF_MONTH` | Entero (1–31) | Día calendario del mes. | Patrones de inicio y fin de mes. |
-| `DAY_OF_WEEK` | Entero (0–6) | Día de la semana (0: Lunes, 6: Domingo). | Captura diferencias entre días laborales y fin de semana. |
-| `IS_WEEKEND` | Binario (0/1) | Indicador derivado de sábado o domingo. | Variable dicotómica de demanda de ocio vs. negocios. |
-| `SEASON` | Categórica | Estación climática (Invierno, Primavera, Verano, Otoño). | One-Hot Encoding en ColumnTransformer. |
-| `OP_UNIQUE_CARRIER` | Categórica | Código IATA de la aerolínea operadora (ej. WN, AA, DL, UA). | One-Hot Encoding (factor de flota y modelo operativo). |
-| `ORIGIN` | Categórica (IATA) | Código de 3 letras del aeropuerto de origen. | Agrupación de aeropuertos top + One-Hot Encoding. |
-| `DEST` | Categórica (IATA) | Código de 3 letras del aeropuerto de destino. | Agrupación de aeropuertos top + One-Hot Encoding. |
-| `CRS_DEP_HOUR` | Entero (0–23) | Hora programada de salida (extraída de `CRS_DEP_TIME`). 2400 se lee como 00. Los vacíos no se rellenan aquí. | Imputación por mediana dentro del Pipeline, ajustada solo con entrenamiento. |
-| `CRS_DEP_SIN`, `CRS_DEP_COS` | Flotante | Seno y coseno de la hora programada (periodo 24). | La hora 23 queda junto a la 0 para los modelos lineales. |
-| `MONTH_SIN`, `MONTH_COS` | Flotante | Seno y coseno del mes (periodo 12). | Diciembre queda junto a enero. |
-| `CRS_ARR_HOUR` | Entero (0–23) | Hora programada de llegada (extraída de `CRS_ARR_TIME`). | Escalado estándar (congestión de arribo). |
-| `DEP_TIME_BLOCK` | Categórica | Franja horaria de salida (Madrugada, Mañana, Tarde, Noche). | One-Hot Encoding. |
-| `CRS_ELAPSED_TIME` | Flotante | Duración programada total del vuelo en minutos. | Imputación por mediana + StandardScaler. |
-| `DISTANCE` | Flotante | Distancia geográfica entre origen y destino (millas). | Escalado estándar. |
-| `DISTANCE_CAT` | Categórica | Categoría de distancia (Corta $<500$ mi, Media, Larga $>1500$ mi). | One-Hot Encoding. |
-| `ORIGIN_IS_HUB` | Binario (0/1) | Indicador de si el origen es uno de los 10 hubs más congestionados. | Predictor de congestión de pista y espacio aéreo. |
-| `DEST_IS_HUB` | Binario (0/1) | Indicador de si el destino es uno de los 10 hubs más congestionados. | Predictor de congestión de rampa y puertas. |
-| `IS_HUB_TO_HUB` | Binario (0/1) | Vuelo que conecta dos hubs principales simultáneamente. | Interacción de alta saturación operativa. |
+### Numéricas (`cfg.NUMERICAS`)
 
----
-
-## 3. Variables de Fuga de Datos (Data Leakage) — Excluidas Estrictamente del Modelo
-
-Las siguientes columnas **NO DEBEN SER USADAS** como predictoras porque se generan durante o después de la operación del vuelo, revelando el resultado futuro:
-
-| Columna | Significado | Momento en que se Conoce | Motivo de Exclusión Técnica |
-|---|---|---|---|
-| `DEP_TIME` | Hora real de salida de puerta | Tras el abordaje | Revela si el vuelo ya salió tarde de puerta. |
-| `DEP_DELAY` | Retraso real en salida (minutos) | Al salir de puerta | Fuga severa: $ArrDelay \approx DepDelay$ (da $R^2 \approx 0.97$). |
-| `DEP_DEL15` | Retraso salida $\ge 15$ min | Al salir de puerta | Variable derivada del retraso de salida. |
-| `TAXI_OUT` | Tiempo de carreteo de salida | Tras dejar la puerta | Información post-despacho en pista. |
-| `WHEELS_OFF` | Hora real de despegue | En el aire | Ocurre después de la salida programada. |
-| `WHEELS_ON` | Hora real de aterrizaje | Al tocar pista | Final del vuelo. |
-| `TAXI_IN` | Tiempo de carreteo de llegada | En pista de destino | Información posterior al aterrizaje. |
-| `ARR_TIME` | Hora real de llegada | En puerta de destino | Determina directamente la variable objetivo. |
-| `ACTUAL_ELAPSED_TIME` | Duración real del vuelo | Fin del vuelo | Se conoce solo al concluir la operación. |
-| `AIR_TIME` | Tiempo neto en el aire | Fin del vuelo | Conocido tras el vuelo. |
-| `CARRIER_DELAY` | Retraso imputado a aerolínea | Post-vuelo | Causa calculada por la FAA a posteriori. |
-| `WEATHER_DELAY` | Retraso meteorológico | Post-vuelo | Causa calculada por la FAA a posteriori. |
-| `NAS_DELAY` | Retraso por espacio aéreo | Post-vuelo | Causa calculada por la FAA a posteriori. |
-| `SECURITY_DELAY` | Retraso por seguridad | Post-vuelo | Causa calculada por la FAA a posteriori. |
-| `LATE_AIRCRAFT_DELAY` | Retraso por avión entrante | Post-vuelo | Causa calculada por la FAA a posteriori. |
-
----
-
-## 4. Columnas Administrativas / Filtros
-
-| Columna | Significado | Tratamiento |
+| Columna | Fuente | Descripción |
 |---|---|---|
-| `CANCELLED` | Vuelo cancelado (1/0) | Utilizado para filtrar vuelos no operados. |
-| `DIVERTED` | Vuelo desviado a aeropuerto alterno (1/0) | Utilizado para filtrar operaciones incompletas. |
-| `OP_CARRIER_FL_NUM` | Número de vuelo comercial | Descartado (identificador administrativo no generalizable). |
-| `TAIL_NUM` | Matrícula de la aeronave | Descartado (cardinalidad extrema sin generalización en prueba). |
-| `ORIGIN_AIRPORT_ID` | Identificador numérico de origen | Descartado (redundante con `ORIGIN`). |
-| `DEST_AIRPORT_ID` | Identificador numérico de destino | Descartado (redundante con `DEST`). |
-| `S` | Columna vacía heredada del CSV | Descartada: todos sus valores son nulos. |
+| `DISTANCE` | CSV directo | Distancia programada del tramo (millas). |
+| `CRS_ELAPSED_TIME` | CSV directo | Duración programada del vuelo (minutos). |
+| `hora_sal_dec` | derivada | Hora de salida programada en horas decimales (0,0 – 23,99). |
+| `hora_lleg` | derivada | Hora de llegada programada (entero 0–23). |
+| `dias_a_festivo` | derivada | Distancia mínima en días al festivo federal más cercano (0–15). |
+| `vuelos_origen_hora` | **construida** | Número de vuelos programados en el aeropuerto de origen en la misma hora absoluta. |
+| `vuelos_destino_hora` | **construida** | Número de vuelos programados en el aeropuerto de destino en la misma hora absoluta. |
+| `tramo_del_dia` | **construida** | Número de tramo que lleva la aeronave ese día (1 = primer vuelo, 2, 3…). |
+| `holgura_prog` | **construida** | Minutos entre la llegada programada del tramo previo y la salida programada actual (0–1440). |
+| `ret_prev_llegada` | **construida** | Retraso REAL del tramo anterior del mismo avión, en minutos, solo si ya aterrizó antes de ESTA salida programada. Recortado a `[-60, 360]` con constantes fijas. |
+| `prev_disponible` | **construida** | Bandera (0/1): ¿el tramo anterior ya había aterrizado antes de esta salida programada? El faltante NO es aleatorio. |
+
+### Categóricas (`cfg.CATEGORICAS`)
+
+| Columna | Fuente | Descripción |
+|---|---|---|
+| `OP_UNIQUE_CARRIER` | CSV directo | Código IATA de la aerolínea (WN, AA, DL, UA, …). |
+| `ORIGIN` | CSV directo | Código IATA del aeropuerto de origen. |
+| `DEST` | CSV directo | Código IATA del aeropuerto de destino. |
+| `dia_semana` | derivada | Día de la semana (0 = lunes, 6 = domingo). |
+
+**Transformación dentro del Pipeline (reajustada por pliegue):**
+
+- Numéricas: `SimpleImputer(strategy="median")` + `StandardScaler` (solo para los modelos lineales y la red neuronal).
+- Categóricas: `TargetEncoder(random_state=42)` con cross-fitting interno (sklearn ≥ 1.3) que evita leakage del target.
 
 ---
 
-## 5. Imputación
+## 3 · Columnas prohibidas por fuga (`cfg.PROHIBIDAS`)
 
-En los vuelos operados, `CRS_DEP_TIME` y `DISTANCE` vienen completos. `CRS_ELAPSED_TIME` falta en cuatro filas de todo el año. Aun así se esconde el 20 % de la duración programada del entrenamiento y se compara la media, la mediana global y la mediana por aerolínea. La mediana por aerolínea baja el error y es la que usa el Pipeline (`GroupMedianImputer`), ajustada solo con cada pliegue. El resto de las variables numéricas usa la mediana global dentro del `ColumnTransformer`.
+NO se leen del CSV o se descartan explícitamente. Si alguna se cuela en `X`, el `assert` de
+`columnas.verificar_sin_fuga()` aborta el notebook.
+
+| Columna | Momento en que se conoce | Por qué es fuga |
+|---|---|---|
+| `DEP_TIME` | al salir de puerta | Posterior a la salida programada. |
+| `DEP_DELAY` | al salir de puerta | $ArrDelay \approx DepDelay$: AUC se dispara ($R^2 \approx 0{,}97$). |
+| `DEP_DEL15` | al salir de puerta | Derivada de `DEP_DELAY`. |
+| `TAXI_OUT` | en pista | Posterior a la salida de puerta. |
+| `WHEELS_OFF` | en el aire | Posterior al despegue. |
+| `WHEELS_ON` | al tocar pista | Final del vuelo. |
+| `TAXI_IN` | en pista de destino | Posterior al aterrizaje. |
+| `ARR_TIME` | en puerta de destino | Determina directamente el target. |
+| `ACTUAL_ELAPSED_TIME` | fin del vuelo | Se conoce al concluir. |
+| `AIR_TIME` | fin del vuelo | Conocido tras el vuelo. |
+| `CARRIER_DELAY` | post-vuelo | Causa calculada por la FAA a posteriori (>50 % de nulos). |
+| `WEATHER_DELAY` | post-vuelo | Causa calculada por la FAA a posteriori (>50 % de nulos). |
+| `NAS_DELAY` | post-vuelo | Causa calculada por la FAA a posteriori (>50 % de nulos). |
+| `SECURITY_DELAY` | post-vuelo | Causa calculada por la FAA a posteriori (>50 % de nulos). |
+| `LATE_AIRCRAFT_DELAY` | post-vuelo | Causa calculada por la FAA a posteriori (es exactamente la señal que capturamos de forma anti-fuga con `ret_prev_llegada`). |
+
+Las cuatro últimas tampoco se leen del CSV (ver `cfg.COLS_CRUDAS`): esa es la barrera 1 de prevención.
+
+---
+
+## 4 · Columnas que SE USAN pero NO entran como `X`
+
+| Columna | Para qué sirve |
+|---|---|
+| `TAIL_NUM` | Identificador de la aeronave; se usa para ordenar por avión y construir `ret_prev_llegada`, `holgura_prog`, `tramo_del_dia`. **No entra al modelo** (cardinalidad extrema sin generalización). |
+| `FL_DATE` | Fecha del vuelo; se reconstruye desde `YEAR/MONTH/DAY_OF_MONTH` y se usa para la validación temporal. **No entra al modelo**. |
+| `CANCELLED` | Marca el filtro `tiene_etiqueta = 0`. |
+| `DIVERTED` | Marca el filtro `tiene_etiqueta = 0`. |
+| `OP_CARRIER_FL_NUM` | Número de vuelo; solo para la llave única de duplicados (`cfg.LLAVE_VUELO`). |
+
+---
+
+## 5 · Imputación
+
+- Los vuelos operados tienen `CRS_DEP_TIME`, `CRS_ARR_TIME`, `DISTANCE` y `CRS_ELAPSED_TIME` casi siempre completos (`ARR_DELAY` y `ARR_DEL15` tienen 2,14 % de nulos exclusivamente por cancelaciones/desvíos, que se filtran).
+- `ret_prev_llegada` tiene nulos cuando no hay tramo anterior o el inbound aún no aterrizó. El faltante **NO es aleatorio** → se conserva la bandera `prev_disponible`.
+- El experimento del paso 4 compara **cuatro métodos** sobre 60.000 filas con el 25 % de los valores ocultos:
+  - Mediana por hora de salida: 18,44 min MAE (gana).
+  - Mediana global: 18,57 min MAE.
+  - Regresión (HistGradientBoosting): 19,94 min MAE.
+  - Media global: 20,25 min MAE.
+- El Pipeline usa `SimpleImputer(strategy="median")` reajustado por pliegue: la mediana global pierde solo 0,13 min frente a la mediana por hora y es más simple.

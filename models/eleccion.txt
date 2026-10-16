@@ -1,3 +1,0 @@
-Campeón por validación temporal: Regresión Logística. ROC-AUC de validación 0.6193 (desviación 0.0253). La línea base acierta el 77.96% de la prueba porque predice siempre puntual, con recall de retraso 0.00. En la prueba, con el umbral elegido en validación (0.3), el F1 del retraso es 0.4070 frente a 0.2796 de la regla manual. Supera la regla en el punto de operación, que es el número que había que vencer.
-
-El ajuste no cambia la decisión. En la misma validación temporal, Regresión Logística pasó de 0.6030 a 0.6031 (ganancia 0.0001); XGBoost pasó de 0.6120 a 0.6103 (ganancia -0.0017). Hace falta al menos 0.005 para reemplazar la configuración base, y ningún otro modelo superó al campeón por más de 0.01. Se conserva la configuración base.

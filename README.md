@@ -1,239 +1,237 @@
-# ✈️ Modelo Predictivo de Retrasos en Vuelos Comerciales de EE.UU. (2025–2026)
-### Proyecto Final — Especialización en Analítica y Ciencia de Datos / Machine Learning
-**Universidad EIA**  
-**Autores:** Sebastián Olaya Pérez, Carlos Daniel Bedoya Moreno, Santiago Felipe Espinel León, Julián Alzate Aristizábal  
+# ✈️ Predicción de retrasos en vuelos comerciales de EE.UU. (jun-2025 a may-2026)
+### Proyecto final · Machine Learning · Especialización en Analítica y Ciencia de Datos · Universidad EIA
 
-![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-![Scikit-Learn](https://img.shields.io/badge/scikit--learn-1.3%2B-orange.svg)
-![BTS DOT](https://img.shields.io/badge/source-BTS%20%2F%20DOT-blue.svg)
-![Status](https://img.shields.io/badge/reproducibility-verified-green.svg)
+**Autores:** Sebastián Olaya Pérez · Carlos Daniel Bedoya Moreno · Santiago Felipe Espinel León · Julián Alzate Aristizábal
 
----
+![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4%2B-orange.svg)
+![Fuente](https://img.shields.io/badge/fuente-BTS%20%2F%20DOT-blue.svg)
+![Estado](https://img.shields.io/badge/reproducible-verificado-green.svg)
 
-## 📌 1. Descripción del Problema y Contexto de Negocio
+> **Pregunta:** con lo que se sabe **a la hora de salida programada** (itinerario, ruta, aerolínea, calendario, congestión y rotación de la aeronave), ¿llegará el vuelo **15 minutos o más tarde**?
+> Clasificación binaria supervisada con la etiqueta oficial de la FAA/DOT (`ARR_DEL15`).
 
-El sistema de aviación comercial de los Estados Unidos representa la infraestructura de transporte más densa del mundo, operando más de 8 millones de vuelos comerciales al año. Los retrasos aéreos representan una pérdida económica anual superior a los **30.000 millones de dólares**, originando sobrecostos operativos para las aerolíneas (combustible adicional, horas extra de tripulación, reubicaciones y multas de la FAA), saturación de plataformas en los aeropuertos y pérdidas de conexiones para millones de pasajeros.
-
-### ¿Por qué Machine Learning?
-La puntualidad de un vuelo es el resultado de la interacción no lineal y dinámica de múltiples factores:
-- **Estacionalidad climática:** Tormentas convectivas severas en verano y frentes árticos/nevadas en invierno.
-- **Efecto cascada no estacionario:** Las aeronaves realizan múltiples trayectos diarios; una demora inicial de 15 minutos en la mañana se propaga y amplifica hacia la tarde y la noche.
-- **Congestión topológica en red:** Retrasos concentrados en los principales *Hubs* del Sistema Nacional del Espacio Aéreo (NAS) de la FAA (Atlanta, O'Hare, Dallas-Fort Worth, Denver, JFK).
-
-Una regla manual rígida no puede ponderar adecuadamente la combinación de estos factores. Machine Learning permite aprender fronteras de decisión y probabilidades calibradas a partir de registros históricos para anticipar el riesgo de demora con antelación.
+Esta entrega resuelve el proyecto completo siguiendo **los 6 pasos de la sesión 6** que pide la rúbrica, con comentarios línea a línea en el código y las decisiones justificadas en el notebook.
 
 ---
 
-## 🏛️ 2. Fuente Oficial de Datos y Periodo de Estudio
+## 📋 Rúbrica y cómo la cubre esta entrega
 
-- **Entidad Oficial:** *Bureau of Transportation Statistics (BTS), U.S. Department of Transportation (DOT)*.
-- **Sistema:** *Reporting Carrier On-Time Performance*.
-- **Catálogo Kaggle:** [2021-2026 US Flights](https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights).
-- **Licencia:** Obra del Gobierno Federal de los Estados Unidos (*U.S. Government Work* / Dominio Público), sin restricciones para investigación científica o uso comercial.
-- **Periodo de Estudio Oficial:** **1 de junio de 2025 al 31 de mayo de 2026 (12 meses calendario completos)**.
-  - Cubre un ciclo anual estacional completo: Verano (Jun–Ago 2025), Otoño (Sep–Nov 2025), Invierno (Dic 2025–Feb 2026) y Primavera (Mar–May 2026), incluyendo las temporadas de mayor congestión como Acción de Gracias, Navidad y *Spring Break*.
-- **Granularidad:** Cada fila representa una operación aérea comercial regular doméstica en EE.UU.
-
----
-
-## 🎯 3. Definición de la Variable Objetivo (Target)
-
-Se formula un problema de **Clasificación Binaria Supervisada** basado en el estándar regulatorio oficial de la **Federal Aviation Administration (FAA)** y el **U.S. DOT**:
-
-$$\text{Target } y = \begin{cases} 1 & \text{si } \text{ARR\_DELAY} \ge 15 \text{ minutos (Vuelo con retraso significativo)} \\ 0 & \text{si } \text{ARR\_DELAY} < 15 \text{ minutos (Vuelo puntual o adelantado)} \end{cases}$$
-
-- **Justificación del umbral de 15 minutos:** Es el estándar internacional de la aviación comercial. Los vuelos que arriban con menos de 15 minutos de diferencia respecto al itinerario se consideran técnicamente a tiempo (*On-Time Arrival*), mientras que demoras $\ge 15$ minutos activan alertas de pérdida de conexiones, compensaciones a pasajeros y penalizaciones regulatorias.
-- **Tratamiento de Cancelaciones y Desvíos:** Los vuelos con `CANCELLED == 1` o `DIVERTED == 1` no concluyen en su itinerario programado normal (`ARR_DELAY` es nulo). Se excluyen de la muestra de puntualidad regular para no introducir sesgo de proceso.
+| Criterio | Peso | Dónde se defiende |
+|---|:---:|---|
+| **Complejidad del problema** | 25 % | §1-2 · 12 CSV crudos (7,78 M filas, ~85 MB cada uno), lectura por bloques, tabla de rotación de aeronave armada por nosotros |
+| **Datos y transformación** | 25 % | §3-4 · bitácora de limpieza, 4 imputadores comparados, tabla antes/después, 3 barreras anti-fuga + `assert` + demo empírica con `DEP_DELAY` |
+| **Modelos** | 20 % | §5 · 8 modelos (línea base, regla a mano, logística, árbol, RF, HistGB, MLP, XGBoost), mismo Pipeline y mismos pliegues de `TimeSeriesSplit` |
+| **Código en vivo** | 15 % | `Kernel → Restart & Run All` corre en ~3,5 min con `MODO_RAPIDO=True`, semilla 42, modelo guardado en `models/modelo_elegido.joblib` |
+| **Métricas y elección** | 15 % | §6 · AUC + PR-AUC + F1 + Recall; umbral por F1 en validación (no en prueba); regla «dentro de 1 desviación típica, gana el más simple» |
 
 ---
 
-## 🛡️ 4. Prevención Absoluta de Data Leakage (Fuga de Información)
+## 🚀 Cómo correrlo
 
-Para garantizar un modelo con utilidad real en producción, **toda la predicción se realiza exclusivamente con información disponible en la etapa de programación de itinerario (Pre-vuelo / Horarios CRS)**.
+```bash
+# 1) Dependencias
+python -m venv .venv && .\.venv\Scripts\activate       # Windows
+pip install -r requirements.txt
 
-### Tabla de Decisiones y Exclusiones de Leakage:
+# 2) Descargar los 12 CSV mensuales de Kaggle a data/raw/
+#    (Jun-2025.csv ... May-2026.csv). No se versionan: pesan ~1 GB en total.
+#    Página: https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights
 
-| Categoría | Columnas | Decisión | Justificación Técnica |
-|---|---|:---:|---|
-| **Pre-Vuelo (Válidas)** | `MONTH`, `DAY_OF_MONTH`, `DAY_OF_WEEK`, `CRS_DEP_HOUR`, `CRS_ARR_HOUR`, `OP_UNIQUE_CARRIER`, `ORIGIN`, `DEST`, `DISTANCE`, `CRS_ELAPSED_TIME` | ✅ **CONSERVAR** | Disponibles con semanas o días de anticipación al vuelo. |
-| **Operación en Tierra / Salida** | `DEP_TIME`, `DEP_DELAY`, `DEP_DEL15`, `TAXI_OUT` | ❌ **ELIMINAR** | Ocurren al salir de puerta; `DEP_DELAY` genera fuga trivial ($ArrDelay \approx DepDelay$, inflando artificialmente el $R^2$ a 0.97). |
-| **En Vuelo** | `WHEELS_OFF`, `WHEELS_ON`, `AIR_TIME`, `ACTUAL_ELAPSED_TIME` | ❌ **ELIMINAR** | Información generada en el aire o al aterrizar. |
-| **Llegada y Causas** | `ARR_TIME`, `TAXI_IN`, `CARRIER_DELAY`, `WEATHER_DELAY`, `NAS_DELAY`, `SECURITY_DELAY`, `LATE_AIRCRAFT_DELAY` | ❌ **ELIMINAR** | Consecuencias calculadas por la FAA con posterioridad al arribo. |
+# 3) Abrir el notebook y correrlo de principio a fin
+jupyter lab notebooks/proyecto_final_vuelos_us.ipynb     # Kernel -> Restart & Run All
+```
+
+En `src/config.py`:
+- `MODO_RAPIDO = True`  → **modo exposición** (unos 3-4 minutos, 60k filas de validación y 200k de prueba).
+- `MODO_RAPIDO = False` → **modo informe** (números del informe completo; tarda bastante más).
+
+La semilla está fija en 42: los números del notebook coinciden con los de las láminas y con esta documentación.
+
+La primera corrida deja una caché en `data/processed/*.parquet` (~90 s de lectura); las siguientes arrancan de ahí (<2 s).
 
 ---
 
-## 🏗️ 5. Estructura del Repositorio
-
-El proyecto sigue una arquitectura modular para que la corrida se pueda repetir:
+## 📁 Estructura del repositorio
 
 ```text
-Proyecto-final-Machine-Learning/
-│
-├── .gitignore                      # Reglas de exclusión para datos crudos y cachés
-├── README.md                       # Documentación principal del proyecto
-├── requirements.txt                # Dependencias fijadas del proyecto
-├── setup.py                        # Instalación del paquete 'src' en modo editable
-├── LICENSE                         # Licencia del proyecto
-│
-├── data/
-│   ├── raw/                        # 12 CSVs mensuales de BTS (Jun-2025 a May-2026)
-│   └── processed/                  # Dataset representativo (Parquet y CSV)
-│
-├── docs/
-│   ├── diccionario_datos.md        # Catálogo de las 34 columnas y auditoría de leakage
-│   └── guia_colaboracion.md        # Pautas de Git y ramas de trabajo
-│
-├── models/
-│   ├── best_model.joblib           # Pipeline serializado del modelo campeón
-│   ├── metrics_comparison.csv      # Tabla de la corrida del notebook
-│   ├── hiperparametros.csv         # Búsqueda sobre entrenamiento
-│   └── eleccion.txt                # Argumento escrito con esos números
-│
+├── README.md · requirements.txt · setup.py · .gitignore · LICENSE
+├── src/                      todo el código; el notebook solo cuenta la historia
+│   ├── config.py             constantes del proyecto en un solo lugar
+│   ├── datos.py              pasos 2-3: cargar y limpiar los 12 CSV
+│   ├── columnas.py           paso 4: columnas sin fuga + experimento de faltantes
+│   ├── modelos.py            paso 5: catálogo, validación temporal y elección
+│   └── evaluacion.py         paso 6: métricas, umbral, demo de fuga, gráficas
 ├── notebooks/
-│   └── proyecto_final_vuelos_us.ipynb # Notebook ejecutable con los 6 pasos oficiales
-│
-├── reports/
-│   ├── auditoria_mensual_cruda.csv # Conteo de los CSV crudos, mes a mes
-│   └── muestra_vs_mes.csv          # Vuelos operados vs filas tomadas de cada mes
-│
-└── src/
-    ├── config.py                   # Rutas canónicas, periodo oficial y constantes
-    ├── data/
-    │   ├── download_data.py        # Descarga programática con Kaggle API y muestreo
-    │   └── load_data.py            # Carga optimizada con fallback Parquet/CSV
-    ├── features/
-    │   ├── build_features.py       # Ingeniería de variables temporales y de red
-    │   └── transformers.py         # Transformadores Scikit-Learn (RareCategoryGrouper, Cyclic)
-    ├── models/
-    │   ├── pipeline.py             # ColumnTransformer y mediana de duración por aerolínea
-    │   ├── experiment.py           # Comparación, umbral y búsqueda de hiperparámetros
-    │   ├── train.py                # Misma comparación desde la terminal
-    │   └── evaluate.py             # F1 del retraso, ROC-AUC, PR-AUC y matrices
-    └── utils/
-        └── logger.py               # Configuración de registro profesional
+│   └── proyecto_final_vuelos_us.ipynb     el único notebook, con los 6 pasos
+├── data/
+│   ├── raw/                  CSV mensuales tal como salen de Kaggle (NO se versionan)
+│   └── processed/            caché en parquet (NO se versiona)
+├── models/                   modelo_elegido.joblib
+├── reports/                  tablas CSV, resumen JSON y figuras PNG que produce el notebook
+│   └── figuras/              gráficas (hipótesis, comparación, prueba, importancia)
+├── docs/
+│   ├── ficha_de_datos.md     paso 2 · fuente, licencia, qué es una fila, por qué complejo
+│   ├── decisiones.md         pasos 3-4 · cada decisión con su conteo real
+│   ├── diccionario_datos.md  significado de cada columna
+│   └── guia_colaboracion.md  convenciones del equipo
+└── Prediccion_retrasos_vuelos_EIA.pptx   presentación para la sesión 9
 ```
 
 ---
 
-## 6. Limpieza que sí se ve en los crudos
+## 1 · ¿Hace falta Machine Learning?
 
-La tabla de modelado toma el 1 % de los vuelos operados de cada mes, al azar y con semilla 42: **76.201 filas**. Julio aporta 6.747 y febrero 5.543, porque julio operó más vuelos. El detalle está en `reports/muestra_vs_mes.csv`. Esa tabla ya llega sin cancelados. El efecto real de la limpieza está en `reports/auditoria_mensual_cruda.csv`, calculado sobre los 12 CSV:
+El retraso de un vuelo depende de la interacción no lineal de:
+- la **hora** (un avión hace varios tramos; el retraso de la mañana se propaga a la tarde),
+- la **temporada** (tormentas en verano, nieve en invierno, Navidad, *Spring Break*),
+- el **aeropuerto** (congestión programada de los *hubs*: ATL, ORD, DFW, DEN, CLT, LAX, JFK, MIA, MCO, EWR),
+- la **aerolínea** y
+- la **rotación de la aeronave** (el inbound que llega 40 minutos tarde difícilmente sale puntual).
+
+Una regla a mano **no puede ponderar** todo eso. Nuestro punto de comparación:
+> «Si el vuelo sale a las HH:00 o después, llegará retrasado». La hora `HH` se calibra con el entrenamiento (`modelos.calibrar_regla`).
+
+**Línea base:** decir siempre «puntual» acierta ~78 % pero no detecta ni un retraso (recall = 0, F1 = 0). Por eso la **exactitud engaña** en este problema; la métrica principal es el **AUC**.
+
+## 2 · Datos
+
+| | |
+|---|---|
+| Publica | *Bureau of Transportation Statistics (BTS)*, U.S. DOT — *Reporting Carrier On-Time Performance* |
+| Catálogo | Kaggle: [2021-2026 US Flights](https://www.kaggle.com/datasets/umerhafeezsiddiqui/2021-2026-us-flights) |
+| Licencia | *U.S. Government Work* (dominio público) |
+| Periodo | 1-jun-2025 a 31-may-2026 (12 meses, un ciclo estacional completo) |
+| Una fila | Un vuelo programado (origen → destino, aerolínea, fecha). Incluye cancelados y desviados. |
+| Tamaño | 12 CSV crudos, **7.786.702 filas**, ~85 MB por mes |
+
+**Complejidad del origen:** 12 archivos de varios GB en total → lectura por bloques (`chunksize=1_000_000`), reducción de tipos (`float64→float32`, `int→int32`, códigos a `category`) y caché en parquet para que todo quepa en una laptop común.
+
+## 3 · Limpieza (bitácora completa en `docs/decisiones.md`)
+
+Regla del paso: aquí solo se arregla lo que es un hecho objetivo de los datos. Nada que se *aprenda* (medias, medianas, codificaciones) se hace aquí: eso vive dentro del `Pipeline` del paso 5, que se reajusta en cada pliegue.
 
 | Concepto | Filas |
 |---|---:|
 | Universo crudo | 7.786.702 |
 | Cancelados | 145.007 |
 | Desviados | 21.637 |
-| Sin `ARR_DEL15` | 166.645 |
-| Operados, con target | 7.620.057 |
-| Duplicados de la clave vuelo | 3 |
-| Duración programada vacía | 4 |
+| Sin etiqueta `ARR_DEL15` | 166.647 |
+| Operados con etiqueta | **7.620.055** |
+| Duplicados exactos | 0 |
+| Itinerarios imposibles (sin hora/duración/distancia) | 18 |
 
-Cancelados más desviados suman 166.644. Falta una fila, en 7,8 millones, que tiene el target vacío sin esas dos banderas. No se imputa: sin llegada al itinerario no hay etiqueta de puntualidad.
+- Cancelados y desviados **no se imputan**: se marcan con `tiene_etiqueta = 0` y se filtran al final del paso 4 (sus horarios programados sí cuentan para la congestión y la rotación).
+- `FL_DATE` mezcla dos formatos → la fecha se reconstruye desde `YEAR/MONTH/DAY_OF_MONTH`.
+- Horas `hhmm` a minutos con `% 1440`: el `2400` del BTS cae en `0`.
+- Atípicos de retraso se **conservan** (son reales: vuelos perdidos por tormentas).
 
-La duración programada casi no falta. Aun así, en el entrenamiento se escondió el 20 % de `CRS_ELAPSED_TIME`. La mediana por aerolínea bajó el error absoluto de 52,78 a 46,84 minutos (11,2 % menos que la mediana global; la media global se equivoca 54,37). Esa imputación vive dentro del Pipeline y se ajusta solo con cada pliegue.
+## 4 · Columnas (tabla completa en `reports/tabla_columnas.csv`)
 
----
+**Regla de oro:** una columna entra SOLO si su valor se conoce a la hora de salida programada.
 
-## 7. Validación y modelos
+Entran 11 numéricas + 4 categóricas:
+- Del itinerario: `DISTANCE`, `CRS_ELAPSED_TIME`, `hora_sal_dec`, `hora_lleg`, `dia_semana`, `dias_a_festivo`.
+- **Rotación de la aeronave (armada por nosotros):** `ret_prev_llegada`, `prev_disponible`, `holgura_prog`, `tramo_del_dia`.
+- **Congestión programada:** `vuelos_origen_hora`, `vuelos_destino_hora`.
+- Categóricas: `OP_UNIQUE_CARRIER`, `ORIGIN`, `DEST`, `dia_semana`.
 
-Los vuelos se ordenan por `FL_DATE`. Un corte aleatorio entrenaría con 2026 para predecir 2025.
+### Experimento de faltantes (`ret_prev_llegada`, 60k filas, ocultando 25 %)
 
-- **Entrenamiento:** 57.150 vuelos, 1 de junio de 2025 al 4 de marzo de 2026. Retraso: 22,70 %.
-- **Prueba:** 19.051 vuelos, 4 de marzo al 31 de mayo de 2026. Retraso: 22,04 %. No elige el modelo ni el umbral.
-- **Validación:** `TimeSeriesSplit` de 3 pliegues dentro del entrenamiento.
+| Método | MAE (min) |
+|---|---:|
+| **Mediana por hora de salida** ✅ | **18,44** |
+| Mediana global | 18,57 |
+| Regresión (HistGradientBoosting) | 19,94 |
+| Media global | 20,25 |
 
-El corte es el último 25 % de las filas ya ordenadas por fecha. El 4 de marzo de 2026 queda partido: unos vuelos de ese día entrenan y otros se reservan para la prueba.
+Desviación típica de la variable: 71,76 min. La mediana por hora gana por poco; el Pipeline usa `SimpleImputer(strategy="median")` por simplicidad, reajustado por pliegue.
 
-El umbral de cada modelo se elige en el último pliegue, maximizando el F1 del retraso. Con `class_weight='balanced'`, el 0,50 de scikit-learn no es el punto de operación. La exactitud a 0,50 no es la métrica de la decisión: la línea base ya acierta el 77,96 % de la prueba prediciendo siempre puntual, con recall 0.
+### Prevención de fuga: tres barreras + una demostración
 
-Familias comparadas con los mismos datos y la misma validación cruzada:
+1. Lista explícita de columnas (`cfg.NUMERICAS` + `cfg.CATEGORICAS`); el resto ni se lee del CSV.
+2. Construcción con reglas temporales: `ret_prev_llegada` solo si el inbound aterrizó antes de ESTA salida programada; la congestión se cuenta sobre vuelos PROGRAMADOS (no sobre operados).
+3. Preprocesamiento DENTRO del Pipeline, reajustado por pliegue de `TimeSeriesSplit`.
 
-1. Línea base: siempre la clase mayoritaria.
-2. Regla manual: salida desde las 16:00 y origen o destino en un hub de la lista fija.
-3. Regresión logística.
-4. Árbol de decisión.
-5. Random Forest.
-6. Gradient boosting (`HistGradientBoosting`).
-7. XGBoost.
+Más un `assert` (`columnas.verificar_sin_fuga()`) que aborta el notebook si una columna prohibida se cuela en `X`.
 
-KNN y SVM de kernel no entran: con decenas de miles de filas y aeropuertos en one-hot, cada predicción recorre el entrenamiento. La frontera lineal ya está en la logística. Una red neuronal no agrega una familia distinta del boosting en este problema.
+**Demostración empírica en vivo** (celda 4.4): el AUC con y sin `DEP_DELAY` enseña el salto que marca la fuga.
 
----
+## 5 · Modelos y validación (resultados en `reports/tabla_modelos_cv.csv`)
 
-## 8. Resultados de la corrida
+- **Partición temporal:** entrenamiento = 85 % más antiguo (ordenado por fecha); **prueba = último 15 % del calendario** (corte en `2026-04-09`), que no interviene en la elección.
+- **Validación:** `TimeSeriesSplit` de 3 pliegues dentro del entrenamiento, **la misma para todos**.
+- **Métrica de elección:** ROC-AUC.
+- **Umbral:** se elige en el último pliegue de validación maximizando el **F1 del retraso** (con 22 % de clase positiva, el 0,50 por defecto deja al modelo casi mudo).
+- **Familias comparadas:** línea base, regla a mano, logística, árbol, Random Forest, HistGradientBoosting, red neuronal (MLP) y XGBoost. KNN y SVM-kernel se descartan por costo cuadrático con cientos de miles de filas; además no aportan una familia nueva.
+- **Regla de elección:** mayor AUC de validación; si otro modelo queda dentro de **una desviación típica**, gana el más simple. Es la respuesta directa a *«no siempre gana el número más alto»* (lámina 9 de la rúbrica).
 
-El modelo se elige por ROC-AUC de la validación cruzada temporal. Si otro queda a menos de 0,01, se prefiere el más simple. Las columnas de precisión, recall y F1 son el reporte de la prueba, con el umbral ya fijado.
+### Tabla de validación cruzada (3 pliegues de 60k, modo rápido)
 
-| Modelo | ROC-AUC validación | Umbral | Precisión | Recall | F1 retraso | ROC-AUC prueba |
+| Modelo | AUC validación | ± desv. | PR-AUC | F1 | Recall | Precisión | Umbral |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| HistGradientBoosting | 0,7989 | 0,0064 | 0,6578 | 0,599 | 0,563 | 0,640 | 0,32 |
+| XGBoost | 0,7964 | 0,0076 | 0,6521 | 0,599 | 0,537 | 0,678 | 0,36 |
+| **Random Forest** ✅ | **0,7943** | **0,0074** | **0,6447** | **0,593** | **0,539** | **0,659** | **0,33** |
+| MLP (red neuronal) | 0,7823 | 0,0100 | 0,6225 | 0,580 | 0,535 | 0,632 | 0,32 |
+| Árbol de decisión | 0,7813 | 0,0097 | 0,6325 | 0,593 | 0,586 | 0,599 | 0,27 |
+| Regresión logística | 0,7367 | 0,0063 | 0,5523 | 0,511 | 0,442 | 0,608 | 0,29 |
+| Regla a mano (hora ≥ 12) | 0,5794 | 0,0105 | 0,2424 | 0,381 | 0,701 | 0,261 | 0,50 |
+| Línea base (siempre a tiempo) | 0,5000 | 0,0000 | 0,2105 | 0,000 | 0,000 | 0,000 | 0,50 |
+
+**Elección argumentada:** el mejor AUC lo saca HistGradientBoosting (0,7989), pero XGBoost (0,7964) y Random Forest (0,7943) quedan dentro del margen de 1 desviación típica (0,0064 → umbral de empate en 0,7925). De los tres, **Random Forest es el más simple de interpretar** (importancias nativas, sin boosting iterativo) → **gana el empate**. El ajuste de hiperparámetros no se intenta porque los tres ya están empatados en validación.
+
+## 6 · Evaluación (prueba final tocada UNA SOLA VEZ)
+
+Partición temporal usada:
+
+| Bloque | Fechas | Filas | Tasa de retraso |
+|---|---|---:|---:|
+| Entrenamiento + validación | 1-jun-2025 → 8-abr-2026 | 60.000 (muestra) | 23,07 % |
+| **Prueba final** | 9-abr-2026 → 31-may-2026 | 200.000 (muestra) | 20,53 % |
+
+### Resultados sobre la prueba (`reports/tabla_prueba_final.csv`)
+
+| Modelo | AUC | PR-AUC | F1 | Recall | Precisión | Exactitud |
 |---|---:|---:|---:|---:|---:|---:|
-| Regla manual | — | — | 0,3012 | 0,2608 | 0,2796 | — |
-| Línea base | 0,5000 | 0,50 | 0,0000 | 0,0000 | 0,0000 | 0,5000 |
-| **Regresión logística** | **0,6193** | **0,30** | **0,2721** | **0,8073** | **0,4070** | **0,6524** |
-| Árbol de decisión | 0,6107 | 0,40 | 0,2602 | 0,8244 | 0,3956 | 0,6207 |
-| Random Forest | 0,6259 | 0,40 | 0,2713 | 0,7880 | 0,4037 | 0,6399 |
-| Gradient boosting | 0,6273 | 0,40 | 0,2709 | 0,7923 | 0,4038 | 0,6374 |
-| XGBoost | 0,6285 | 0,40 | 0,2661 | 0,8271 | 0,4026 | 0,6374 |
+| **Random Forest** ✅ | **0,806** | **0,659** | **0,586** | **0,524** | **0,666** | **0,848** |
+| Regla a mano (hora ≥ 12) | 0,600 | 0,247 | 0,386 | 0,738 | 0,261 | 0,518 |
+| Línea base (siempre a tiempo) | 0,500 | 0,205 | 0,000 | 0,000 | 0,000 | 0,795 |
 
-XGBoost tiene el mayor ROC-AUC de validación (0,6285). La logística queda en 0,6193. La diferencia es 0,0092, dentro de la banda de 0,01, y la logística es más simple. Esa diferencia también es menor que la desviación de los pliegues de la logística (0,0253). En la prueba, con el umbral ya fijado, el F1 de la logística es 0,4070. La prueba no se usó para elegir.
+- **F1 del retraso: 0,586** (vs 0,386 de la regla a mano y 0 de la línea base).
+- **Recall 52 % · Precisión 67 %**: el umbral 0,333 captura la mitad de los retrasos reales con una precisión decente (dos de cada tres alertas son retrasos verdaderos).
+- La **exactitud** del Random Forest (0,848) solo mejora a la línea base (0,795) en 5 puntos: con 20 % de retrasos esa métrica engaña, por eso vigilamos AUC, F1 y recall.
 
-La logística, en su umbral 0,30, encuentra el 81 % de los retrasos de la prueba. La precisión es 0,27: de cada cuatro alertas, una es un retraso. La regla manual tiene F1 0,2796. El modelo la supera en el punto de operación.
+### Top variables (importancia por permutación, caída del AUC)
 
-### Hiperparámetros
+| Columna | Caída del AUC |
+|---|---:|
+| `ret_prev_llegada` (retraso del tramo anterior) | **+0,110** |
+| `prev_disponible` (bandera: ¿ya aterrizó el inbound?) | **+0,052** |
+| `holgura_prog` (minutos entre llegada previa y salida) | **+0,033** |
+| `hora_sal_dec` | +0,013 |
+| `DEST` (aeropuerto de destino) | +0,008 |
 
-La búsqueda usa otro `TimeSeriesSplit` de 2 pliegues, solo sobre el entrenamiento, 4 combinaciones por modelo. Se ajustan el campeón y el de mayor ROC-AUC de validación.
-
-| Modelo | ROC-AUC base | ROC-AUC ajustado | Ganancia |
-|---|---:|---:|---:|
-| Regresión logística (`C` = 3,85) | 0,6030 | 0,6031 | 0,0001 |
-| XGBoost | 0,6120 | 0,6103 | −0,0017 |
-
-Hace falta una ganancia de al menos 0,005 para cambiar la configuración. No aparece. Se guarda la regresión logística base.
-
-El 0,6030 de la logística en esta tabla no es el 0,6193 de la tabla anterior. El primero sale de los 2 pliegues usados para ajustar hiperparámetros. El segundo sale de los 3 pliegues usados para elegir la familia.
+Las tres primeras son las **columnas que construimos**: la rotación de la aeronave es, por lejos, lo que más mueve el AUC. Confirma la hipótesis de la §1.
 
 ---
 
-## 9. Instalación y ejecución
+## 🧪 Reproducibilidad
 
-### 1. Clonar el repositorio
-```bash
-git clone https://github.com/sebastia-olaya/Proyecto-final-Machine-Learning.git
-cd Proyecto-final-Machine-Learning
-```
+- `src/config.py:SEMILLA = 42` fija toda la aleatoriedad del proyecto.
+- `MODO_RAPIDO=True` corre toda la cadena en ~3,5 min (`Restart & Run All`) con 60k CV y 200k test.
+- `MODO_RAPIDO=False` reproduce los números del informe completo.
+- La caché parquet acelera las corridas sucesivas (<2 s para la carga).
+- `models/modelo_elegido.joblib` guarda el Pipeline entrenado, el umbral, la hora de la regla y las columnas de `X`.
+- Resumen reproducible en `reports/resumen_final.json`.
 
-### 2. Configurar entorno virtual e instalar dependencias
-```bash
-# Crear entorno virtual
-python -m venv .venv
+## 📚 Documentación adicional
 
-# Activar en Windows:
-.\.venv\Scripts\activate
+- `docs/ficha_de_datos.md` — paso 2: fuente, licencia, qué es una fila, por qué el problema es complejo.
+- `docs/decisiones.md` — pasos 3-4: cada decisión con su conteo real de la corrida.
+- `docs/diccionario_datos.md` — significado y origen de cada columna.
+- `docs/guia_colaboracion.md` — convenciones del equipo.
 
-# Instalar dependencias
-pip install -r requirements.txt
-pip install -e .
-```
+## 📄 Licencia
 
-### 3. Descarga y preparación reproducible de datos
-```bash
-# Configura tu token de Kaggle si no lo has hecho:
-# export KAGGLE_API_TOKEN="tu_token" o guárdalo en ~/.kaggle/access_token
-
-# Descarga los 12 meses y genera el dataset reproducible:
-python src/data/download_data.py --sample-fraction 0.01
-```
-
-### 4. La misma comparación desde la terminal
-```bash
-python src/models/train.py
-```
-
-`--quick` usa menos árboles. Los números del README salen de `python src/models/train.py`, con semilla 42. El notebook usa las mismas funciones.
-
-### 5. Notebook
-```bash
-jupyter notebook notebooks/proyecto_final_vuelos_us.ipynb
-```
-
-La comparación de modelos tarda cerca de tres minutos. El notebook, con la auditoría y las gráficas, unos minutos más. La semilla es 42.
+MIT (ver `LICENSE`). Los datos de BTS son dominio público (*U.S. Government Work*).
