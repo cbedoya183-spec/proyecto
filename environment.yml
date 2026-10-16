@@ -1,0 +1,50 @@
+# Entorno del curso de Machine Learning
+#
+# Crear:      conda env create -f environment.yml
+# Activar:    conda activate ml-eia-2
+# Actualizar: conda env update -f environment.yml --prune
+#
+# NOTA PARA EL DOCENTE: verifica estas versiones en tu máquina antes de
+# publicar el repositorio. Si alguna no resuelve, quita el pin de esa
+# línea (deja solo el nombre del paquete) y vuelve a probar.
+
+name: ml-eia-2
+
+channels:
+  - conda-forge
+
+dependencies:
+  # Base
+  - python=3.11
+  - pip
+
+  # Manipulación de datos
+  - pandas=2.2
+  - numpy=1.26
+  - openpyxl=3.1          # leer y escribir Excel
+
+  # Modelos
+  - scikit-learn=1.5
+  - scipy=1.13
+  - statsmodels=0.14
+
+  # Ensambles (sesión 5)
+  - lightgbm=4.3
+  - xgboost=2.0
+
+  # Visualización
+  - matplotlib=3.8
+  - seaborn=0.13
+
+  # Entorno de trabajo
+  - jupyterlab=4.2
+  - notebook=7.2
+  - ipywidgets=8.1
+
+  # Utilidades
+  - tqdm
+  - joblib
+
+  - pip:
+      - shap==0.45.1          # interpretabilidad, sesión 5
+      - imbalanced-learn==0.12.3  # manejo de desbalance, sesión 6
