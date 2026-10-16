@@ -99,7 +99,7 @@ def catalogo(hora_regla=17):
         "HistGradientBoosting": (HistGradientBoostingClassifier(
             max_iter=200, learning_rate=0.08, random_state=cfg.SEMILLA), True, False, 6),
         "Red neuronal (MLP)": (MLPClassifier(
-            hidden_layer_sizes=(64, 32), early_stopping=True, max_iter=60,
+            hidden_layer_sizes=(64, 32), activation='relu', early_stopping=True, max_iter=60,
             random_state=cfg.SEMILLA), True, True, 7),
     }
     if HAY_XGB:
